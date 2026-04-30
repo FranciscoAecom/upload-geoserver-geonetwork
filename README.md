@@ -31,6 +31,37 @@ Exemplo usando os valores padrao do ambiente QAS:
 
 Durante a execucao, o script solicita as credenciais via `Get-Credential`. As credenciais nao devem ser salvas no repositorio.
 
+## Comando para subir as bases
+
+Para subir uma base APP CAR, informe a pasta da UF e mantenha `Store` e `Layer` com o mesmo nome da camada:
+
+```powershell
+.\upload_iocasta_qas.ps1 `
+  -Folder "C:\Users\RibeiroF\Downloads\app_car_ba\SICAR\20260301\00" `
+  -Workspace "gold" `
+  -Store "pol_pcd_app_car_ba_20260301" `
+  -Layer "pol_pcd_app_car_ba_20260301" `
+  -SameCredentialForCatalog
+```
+
+Para subir varias bases seguindo o mesmo padrao de UF e data:
+
+```powershell
+$data = "20260301"
+$ufs = @("ac", "al", "am", "ap", "ba", "ce", "df", "es", "go", "ma", "mg", "ms", "mt", "pa", "pb", "pe", "pi", "pr", "rj", "rn", "ro", "rr", "rs", "sc", "se", "sp", "to")
+
+foreach ($uf in $ufs) {
+  $layer = "pol_pcd_app_car_${uf}_$data"
+
+  .\upload_iocasta_qas.ps1 `
+    -Folder "C:\Users\RibeiroF\Downloads\app_car_$uf\SICAR\$data\00" `
+    -Workspace "gold" `
+    -Store $layer `
+    -Layer $layer `
+    -SameCredentialForCatalog
+}
+```
+
 ## Parametros principais
 
 | Parametro | Padrao | Descricao |
