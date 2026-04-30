@@ -33,6 +33,19 @@ Durante a execucao, o script solicita as credenciais via `Get-Credential`. As cr
 
 ## Comando para subir as bases
 
+No terminal PowerShell, entre na pasta do repositorio e execute:
+
+```powershell
+cd "C:\Temp\Repositórios\upload-geoserver-geonetwork"
+
+.\upload_iocasta_qas.ps1 `
+  -Folder "C:\Users\RibeiroF\Downloads\app_car_ba\SICAR\20260301\00" `
+  -Workspace "gold" `
+  -Store "pol_pcd_app_car_ba_20260301" `
+  -Layer "pol_pcd_app_car_ba_20260301" `
+  -SameCredentialForCatalog
+```
+
 Para subir uma base APP CAR, informe a pasta da UF e mantenha `Store` e `Layer` com o mesmo nome da camada:
 
 ```powershell
