@@ -1,10 +1,10 @@
 param(
-  [string]$Folder = "C:\Users\RibeiroF\Downloads\app_car_ba\SICAR\20260301\00",
+  [string]$Folder = "C:\Users\RibeiroF\Downloads\app_car_rr\SICAR\20260301\00",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
-  [string]$Store = "pol_pcd_app_car_ba_20260301",
-  [string]$Layer = "pol_pcd_app_car_ba_20260301",
+  [string]$Store = "pol_pcd_app_car_rr_20260301",
+  [string]$Layer = "pol_pcd_app_car_rr_20260301",
   [string]$LayerTitle,
   [string]$Style,
   [string]$CatalogGroup = "2",
