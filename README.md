@@ -16,24 +16,9 @@ O fluxo principal esta em `upload_iocasta_qas.ps1`. Ele localiza um GeoPackage, 
 
 Para os scripts auxiliares de figuras em `tools/`, tambem e necessario ter QGIS/GDAL instalado no caminho esperado pelos scripts.
 
-## Uso principal
-
-Exemplo usando os valores padrao do ambiente QAS:
-
-```powershell
-.\upload_iocasta_qas.ps1 `
-  -Folder "C:\Users\RibeiroF\Downloads\app_car_ba\SICAR\20260301\00" `
-  -Workspace "gold" `
-  -Store "pol_pcd_app_car_ba_20260301" `
-  -Layer "pol_pcd_app_car_ba_20260301" `
-  -SameCredentialForCatalog
-```
-
-Durante a execucao, o script solicita as credenciais via `Get-Credential`. As credenciais nao devem ser salvas no repositorio.
-
 ## Comando para subir as bases
 
-No terminal PowerShell, entre na pasta do repositorio e execute:
+Para subir uma base APP CAR, abra o terminal PowerShell, entre na pasta do repositorio e execute:
 
 ```powershell
 cd "C:\Temp\Repositórios\upload-geoserver-geonetwork"
@@ -46,16 +31,7 @@ cd "C:\Temp\Repositórios\upload-geoserver-geonetwork"
   -SameCredentialForCatalog
 ```
 
-Para subir uma base APP CAR, informe a pasta da UF e mantenha `Store` e `Layer` com o mesmo nome da camada:
-
-```powershell
-.\upload_iocasta_qas.ps1 `
-  -Folder "C:\Users\RibeiroF\Downloads\app_car_ba\SICAR\20260301\00" `
-  -Workspace "gold" `
-  -Store "pol_pcd_app_car_ba_20260301" `
-  -Layer "pol_pcd_app_car_ba_20260301" `
-  -SameCredentialForCatalog
-```
+Durante a execucao, o script solicita as credenciais via `Get-Credential`. As credenciais nao devem ser salvas no repositorio.
 
 Para subir varias bases seguindo o mesmo padrao de UF e data:
 
