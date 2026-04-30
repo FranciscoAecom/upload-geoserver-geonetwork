@@ -1,0 +1,15 @@
+# PowerShell/runtime artifacts
+*.log
+*.tmp
+*.bak
+*.ps1xml
+
+# Local environment files
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
