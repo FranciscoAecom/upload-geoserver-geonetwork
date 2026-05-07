@@ -1,10 +1,10 @@
 param(
-  [string]$Folder = "C:\Users\RibeiroF\Downloads\app_car_rr\SICAR\20260301\00",
+  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\bio\especies_ameacadas_gbif_mma\GBIF_MMA\20260505\00",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
-  [string]$Store = "pol_pcd_app_car_rr_20260301",
-  [string]$Layer = "pol_pcd_app_car_rr_20260301",
+  [string]$Store = "pnt_bio_sp_end_20260505",
+  [string]$Layer = "pnt_bio_sp_end_20260505",
   [string]$LayerTitle,
   [string]$Style,
   [string]$CatalogGroup = "2",
