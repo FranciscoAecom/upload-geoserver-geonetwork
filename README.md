@@ -2,7 +2,7 @@
 
 Scripts PowerShell para publicar camadas APP CAR no GeoServer e importar os metadados ISO 19139 no GeoNetwork.
 
-O fluxo principal esta em `upload_iocasta_qas.ps1`. Ele localiza um arquivo de dados (`.gpkg` ou `.rst`), um SLD e um XML de metadados em uma pasta local, publica a camada no GeoServer, cria ou atualiza o estilo, associa o estilo a camada e importa o XML no catalogo GeoNetwork.
+O fluxo principal esta em `upload_iocasta_qas.ps1`. Ele localiza um arquivo de dados (`.gpkg`, `.rst` ou `.tif`), um SLD e um XML de metadados em uma pasta local, publica a camada no GeoServer, cria ou atualiza o estilo, associa o estilo a camada e importa o XML no catalogo GeoNetwork.
 
 ## Pre-requisitos
 
@@ -10,7 +10,7 @@ O fluxo principal esta em `upload_iocasta_qas.ps1`. Ele localiza um arquivo de d
 - `curl.exe` disponivel no PATH.
 - Credenciais com permissao de escrita no GeoServer e no GeoNetwork.
 - Pasta de entrada contendo exatamente:
-  - 1 arquivo `.gpkg` ou `.rst`
+  - 1 arquivo `.gpkg`, `.rst` ou `.tif`
   - 1 arquivo `.sld`
   - 1 arquivo `.xml`
 
@@ -55,7 +55,7 @@ foreach ($uf in $ufs) {
 
 | Parametro | Padrao | Descricao |
 | --- | --- | --- |
-| `Folder` | pasta local APP CAR BA | Pasta que contem o `.gpkg` ou `.rst`, `.sld` e `.xml`. |
+| `Folder` | pasta local APP CAR BA | Pasta que contem o `.gpkg`, `.rst` ou `.tif`, `.sld` e `.xml`. |
 | `GeoServer` | `https://gisqas.iocasta.com.br/geoserver` | URL base do GeoServer. |
 | `Catalog` | `https://catalogqas.iocasta.com.br` | URL base do GeoNetwork. |
 | `Workspace` | `gold` | Workspace de destino no GeoServer. |
@@ -71,12 +71,12 @@ foreach ($uf in $ufs) {
 
 - `-SameCredentialForCatalog`: reutiliza a credencial do GeoServer no GeoNetwork.
 - `-SkipGeoServer`: ignora as etapas do GeoServer.
-- `-SkipGeoPackage`: nao faz upload do GeoPackage, mas continua ajustando titulo/estilo.
+- `-SkipGeoPackage`: nao faz upload do arquivo de dados, mas continua ajustando titulo/estilo.
 - `-SkipCatalog`: ignora a importacao no GeoNetwork.
 
 ## Fluxo executado
 
-1. Valida a pasta de entrada e localiza os arquivos `.gpkg` ou `.rst`, `.sld` e `.xml`.
+1. Valida a pasta de entrada e localiza os arquivos `.gpkg`, `.rst` ou `.tif`, `.sld` e `.xml`.
 2. Publica o arquivo raster ou GeoPackage no GeoServer.
 3. Ajusta o titulo da camada.
 4. Cria ou atualiza o estilo SLD.

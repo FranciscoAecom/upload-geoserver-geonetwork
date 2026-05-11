@@ -1,10 +1,10 @@
 param(
-  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\bio\especies_ameacadas_gbif_mma\GBIF_MMA\20260505\00",
+  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\gsi\dist_watwy\AECOM\20260410\00",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
-  [string]$Store = "pnt_bio_sp_end_20260505",
-  [string]$Layer = "pnt_bio_sp_end_20260505",
+  [string]$Store = "rst_gsi_dist_watwy_20260410",
+  [string]$Layer = "rst_gsi_dist_watwy_20260410",
   [string]$LayerTitle,
   [string]$Style,
   [string]$CatalogGroup = "2",
@@ -37,11 +37,11 @@ function Resolve-RequiredDataFile {
 
   $files = @(Get-ChildItem -LiteralPath $Path -File | Where-Object {
     $extension = $_.Extension.ToLowerInvariant()
-    $extension -in '.gpkg', '.rst'
+    $extension -in '.gpkg', '.rst', '.tif'
   })
 
   if ($files.Count -ne 1) {
-    throw "Esperava exatamente 1 arquivo de dados (.gpkg ou .rst) em '$Path', mas encontrei $($files.Count)."
+    throw "Esperava exatamente 1 arquivo de dados (.gpkg, .rst ou .tif) em '$Path', mas encontrei $($files.Count)."
   }
 
   return $files[0].FullName
@@ -405,6 +405,13 @@ switch ($dataExtension) {
     $layerResource = 'coverages'
     $dataLabel = 'RST'
   }
+  '.tif' {
+    $dataType = 'geotiff'
+    $dataContentType = 'image/tiff'
+    $dataEndpoint = 'coveragestores'
+    $layerResource = 'coverages'
+    $dataLabel = 'TIFF'
+  }
   default {
     throw "Tipo de arquivo nao suportado: $dataExtension"
   }
@@ -426,7 +433,7 @@ if ([string]::IsNullOrWhiteSpace($GeoServerLayerTitle)) {
 }
 
 Write-Host "Arquivos encontrados:"
-Write-Host "  $dataLabel: $dataPath"
+Write-Host "  $($dataLabel): $dataPath"
 Write-Host "  SLD : $sldPath"
 Write-Host "  XML : $xmlPath"
 Write-Host ""
@@ -466,7 +473,7 @@ else {
       "--header", "Authorization: Basic $geoAuth",
       "--header", "Content-Type: $dataContentType",
       "--upload-file", $dataPath,
-      "$GeoServer/rest/workspaces/$Workspace/$dataEndpoint/$Store/file.$dataType?configure=all"
+      "$GeoServer/rest/workspaces/$Workspace/$dataEndpoint/$Store/file.${dataType}?configure=all"
     )
   }
 
@@ -507,7 +514,7 @@ else {
         "--request", "PUT",
         "--header", "Authorization: Basic $geoAuth",
         "--header", "Content-Type: application/xml; charset=UTF-8",
-        "--data-binary", "@${tmpFeatureTypeBody.FullName}",
+        "--data-binary", "@$($tmpFeatureTypeBody.FullName)",
         "$GeoServer/rest/workspaces/$Workspace/$dataEndpoint/$Store/$layerResource/$Layer"
       )
     }
