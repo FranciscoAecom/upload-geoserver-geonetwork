@@ -32,6 +32,20 @@ function Resolve-RequiredFile {
   return $files[0].FullName
 }
 
+function Resolve-RequiredMetadataFile {
+  param([string]$Path)
+
+  $files = @(Get-ChildItem -LiteralPath $Path -Filter "*.xml" -File | Where-Object {
+    $_.Name -notmatch '\.aux\.xml$'
+  })
+
+  if ($files.Count -ne 1) {
+    throw "Esperava 1 arquivo de metadados XML em '$Path', mas encontrei $($files.Count)."
+  }
+
+  return $files[0].FullName
+}
+
 function Resolve-RequiredDataFile {
   param([string]$Path)
 
@@ -387,7 +401,7 @@ if (-not (Test-Path -LiteralPath $Folder)) {
 
 $dataPath = Resolve-RequiredDataFile -Path $Folder
 $sldPath = Resolve-RequiredFile -Path $Folder -Pattern "*.sld"
-$xmlPath = Resolve-RequiredFile -Path $Folder -Pattern "*.xml"
+$xmlPath = Resolve-RequiredMetadataFile -Path $Folder
 
 $dataExtension = [IO.Path]::GetExtension($dataPath).ToLowerInvariant()
 switch ($dataExtension) {
