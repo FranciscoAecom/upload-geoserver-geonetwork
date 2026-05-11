@@ -32,6 +32,21 @@ function Resolve-RequiredFile {
   return $files[0].FullName
 }
 
+function Resolve-RequiredDataFile {
+  param([string]$Path)
+
+  $files = @(Get-ChildItem -LiteralPath $Path -File | Where-Object {
+    $extension = $_.Extension.ToLowerInvariant()
+    $extension -in '.gpkg', '.rst'
+  })
+
+  if ($files.Count -ne 1) {
+    throw "Esperava exatamente 1 arquivo de dados (.gpkg ou .rst) em '$Path', mas encontrei $($files.Count)."
+  }
+
+  return $files[0].FullName
+}
+
 function ConvertTo-BasicAuth {
   param([pscredential]$Credential)
 
@@ -370,9 +385,30 @@ if (-not (Test-Path -LiteralPath $Folder)) {
   throw "Pasta nao encontrada: $Folder"
 }
 
-$gpkgPath = Resolve-RequiredFile -Path $Folder -Pattern "*.gpkg"
+$dataPath = Resolve-RequiredDataFile -Path $Folder
 $sldPath = Resolve-RequiredFile -Path $Folder -Pattern "*.sld"
 $xmlPath = Resolve-RequiredFile -Path $Folder -Pattern "*.xml"
+
+$dataExtension = [IO.Path]::GetExtension($dataPath).ToLowerInvariant()
+switch ($dataExtension) {
+  '.gpkg' {
+    $dataType = 'gpkg'
+    $dataContentType = 'application/geopackage+vnd.sqlite3'
+    $dataEndpoint = 'datastores'
+    $layerResource = 'featuretypes'
+    $dataLabel = 'GPKG'
+  }
+  '.rst' {
+    $dataType = 'rst'
+    $dataContentType = 'application/octet-stream'
+    $dataEndpoint = 'coveragestores'
+    $layerResource = 'coverages'
+    $dataLabel = 'RST'
+  }
+  default {
+    throw "Tipo de arquivo nao suportado: $dataExtension"
+  }
+}
 
 if ([string]::IsNullOrWhiteSpace($Style)) {
   $Style = [IO.Path]::GetFileNameWithoutExtension($sldPath)
@@ -390,7 +426,7 @@ if ([string]::IsNullOrWhiteSpace($GeoServerLayerTitle)) {
 }
 
 Write-Host "Arquivos encontrados:"
-Write-Host "  GPKG: $gpkgPath"
+Write-Host "  $dataLabel: $dataPath"
 Write-Host "  SLD : $sldPath"
 Write-Host "  XML : $xmlPath"
 Write-Host ""
@@ -413,11 +449,11 @@ else {
 
   if ($SkipGeoPackage) {
     Write-Host ""
-    Write-Host "1/5 - GeoPackage ignorado por parametro -SkipGeoPackage."
+    Write-Host "1/5 - Upload de dados ignorado por parametro -SkipGeoPackage."
   }
   else {
     Write-Host ""
-    Write-Host "1/5 - Publicando GeoPackage no GeoServer..."
+    Write-Host "1/5 - Publicando $dataLabel no GeoServer..."
     Invoke-Curl -Arguments @(
       "--fail-with-body",
       "--show-error",
@@ -428,25 +464,37 @@ else {
       "--max-time", "0",
       "--request", "PUT",
       "--header", "Authorization: Basic $geoAuth",
-      "--header", "Content-Type: application/geopackage+vnd.sqlite3",
-      "--upload-file", $gpkgPath,
-      "$GeoServer/rest/workspaces/$Workspace/datastores/$Store/file.gpkg?configure=all"
+      "--header", "Content-Type: $dataContentType",
+      "--upload-file", $dataPath,
+      "$GeoServer/rest/workspaces/$Workspace/$dataEndpoint/$Store/file.$dataType?configure=all"
     )
   }
 
   Write-Host ""
   Write-Host "2/5 - Ajustando titulo da camada..."
   $escapedLayerTitle = ConvertTo-XmlEscapedText -Text $GeoServerLayerTitle
-  $featureTypeBody = @"
+
+  if ($layerResource -eq 'featuretypes') {
+    $resourceBody = @"
 <?xml version="1.0" encoding="UTF-8"?>
 <featureType>
   <title>$escapedLayerTitle</title>
 </featureType>
 "@
+  }
+  else {
+    $resourceBody = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage>
+  <title>$escapedLayerTitle</title>
+</coverage>
+"@
+  }
+
   $tmpFeatureTypeBody = New-TemporaryFile
   try {
     $utf8NoBom = New-Object Text.UTF8Encoding $false
-    [IO.File]::WriteAllText($tmpFeatureTypeBody.FullName, $featureTypeBody, $utf8NoBom)
+    [IO.File]::WriteAllText($tmpFeatureTypeBody.FullName, $resourceBody, $utf8NoBom)
     try {
       Invoke-Curl -Arguments @(
         "--fail-with-body",
@@ -459,8 +507,8 @@ else {
         "--request", "PUT",
         "--header", "Authorization: Basic $geoAuth",
         "--header", "Content-Type: application/xml; charset=UTF-8",
-        "--data-binary", "@$($tmpFeatureTypeBody.FullName)",
-        "$GeoServer/rest/workspaces/$Workspace/datastores/$Store/featuretypes/$Layer"
+        "--data-binary", "@${tmpFeatureTypeBody.FullName}",
+        "$GeoServer/rest/workspaces/$Workspace/$dataEndpoint/$Store/$layerResource/$Layer"
       )
     }
     catch {
