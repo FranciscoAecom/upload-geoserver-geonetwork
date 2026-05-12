@@ -1,10 +1,10 @@
 param(
-  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\gsi\dist_watwy\AECOM\20260410\00",
+  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\sa_car_ro\SICAR\20260301\00",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
-  [string]$Store = "rst_gsi_dist_watwy_20260410",
-  [string]$Layer = "rst_gsi_dist_watwy_20260410",
+  [string]$Store = "pol_pcd_sa_car_ro_20260301",
+  [string]$Layer = "pol_pcd_sa_car_ro_20260301",
   [string]$LayerTitle,
   [string]$Style,
   [string]$CatalogGroup = "2",
