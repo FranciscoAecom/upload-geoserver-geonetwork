@@ -331,7 +331,21 @@ function Set-DataDictionaryFieldTypes {
     }
 
     $fieldName = $nameNode.InnerText.Trim()
-    if (-not $AttributeTypes.ContainsKey($fieldName)) {
+    $newType = $null
+    if ($AttributeTypes.ContainsKey($fieldName)) {
+      $newType = $AttributeTypes[$fieldName]
+    }
+    elseif ($AttributeTypes.ContainsKey("sdb_$fieldName")) {
+      $newType = $AttributeTypes["sdb_$fieldName"]
+    }
+    else {
+      $suffixMatches = @($AttributeTypes.Keys | Where-Object { $_ -like "*_$fieldName" })
+      if ($suffixMatches.Count -eq 1) {
+        $newType = $AttributeTypes[$suffixMatches[0]]
+      }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($newType)) {
       continue
     }
 
@@ -341,7 +355,6 @@ function Set-DataDictionaryFieldTypes {
       [void]$field.AppendChild($typeNode)
     }
 
-    $newType = $AttributeTypes[$fieldName]
     if ($typeNode.InnerText -ne $newType) {
       $typeNode.InnerText = $newType
       $updatedCount++
@@ -381,6 +394,7 @@ function New-MetadataXmlWithDataDictionaryLink {
   }
 
   $xmlContent = $xmlWriterBuilder.ToString()
+  $xmlContent = [regex]::Replace($xmlContent, '^\s*<\?xml\s+version="1\.0"\s+encoding="utf-16"\s*\?>', '<?xml version="1.0" encoding="UTF-8"?>', 1)
   if ($xmlContent -like "*$dictionaryUrl*") {
     if ($updatedTypeCount -eq 0) {
       return $XmlPath
