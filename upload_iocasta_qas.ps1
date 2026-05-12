@@ -1,10 +1,10 @@
 param(
-  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\sa_car_ro\SICAR\20260301\00",
+  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\sa_car_sc\SICAR\20260301\00",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
-  [string]$Store = "pol_pcd_sa_car_ro_20260301",
-  [string]$Layer = "pol_pcd_sa_car_ro_20260301",
+  [string]$Store = "pol_pcd_sa_car_sc_20260301",
+  [string]$Layer = "pol_pcd_sa_car_sc_20260301",
   [string]$LayerTitle,
   [string]$Style,
   [string]$CatalogGroup = "2",
@@ -250,10 +250,112 @@ function Get-MetadataUuid {
   return $uuidNode.InnerText.Trim()
 }
 
+function ConvertFrom-GeoServerBinding {
+  param([string]$Binding)
+
+  switch -Regex ($Binding) {
+    "String$" { return "String" }
+    "(Long|Integer|Short|BigInteger)$" { return "Integer64" }
+    "(Double|Float|BigDecimal)$" { return "Real" }
+    "(Boolean)$" { return "Boolean" }
+    "(Date|Timestamp|Time)$" { return "Date" }
+    default { return $null }
+  }
+}
+
+function Get-GeoServerAttributeTypes {
+  param(
+    [string]$GeoServer,
+    [string]$Workspace,
+    [string]$Store,
+    [string]$Layer,
+    [string]$GeoAuth
+  )
+
+  $attributeTypes = @{}
+  $featureTypeUrl = "$GeoServer/rest/workspaces/$Workspace/datastores/$Store/featuretypes/$Layer.json"
+
+  try {
+    $featureTypeJson = Invoke-CurlCapture -Arguments @(
+      "--fail-with-body",
+      "--show-error",
+      "--location",
+      "--retry", "3",
+      "--retry-delay", "5",
+      "--connect-timeout", "60",
+      "--max-time", "0",
+      "--header", "Authorization: Basic $GeoAuth",
+      "--header", "Accept: application/json",
+      $featureTypeUrl
+    )
+    $featureType = $featureTypeJson | ConvertFrom-Json
+    $attributes = @($featureType.featureType.attributes.attribute)
+    foreach ($attribute in $attributes) {
+      if ([string]::IsNullOrWhiteSpace($attribute.name) -or $attribute.name -eq "geom") {
+        continue
+      }
+
+      $type = ConvertFrom-GeoServerBinding -Binding $attribute.binding
+      if (-not [string]::IsNullOrWhiteSpace($type)) {
+        $attributeTypes[$attribute.name] = $type
+      }
+    }
+  }
+  catch {
+    Write-Warning "Nao foi possivel ler os tipos no GeoServer em $featureTypeUrl. Detalhe: $($_.Exception.Message)"
+  }
+
+  if (-not $attributeTypes.ContainsKey("fid")) {
+    $attributeTypes["fid"] = "Integer64"
+  }
+
+  return $attributeTypes
+}
+
+function Set-DataDictionaryFieldTypes {
+  param(
+    [xml]$Metadata,
+    [hashtable]$AttributeTypes
+  )
+
+  if ($null -eq $AttributeTypes -or $AttributeTypes.Count -eq 0) {
+    return 0
+  }
+
+  $updatedCount = 0
+  $fields = @($Metadata.SelectNodes("//*[local-name()='data_dictionary']/*[local-name()='field']"))
+  foreach ($field in $fields) {
+    $nameNode = $field.SelectSingleNode("*[local-name()='name']")
+    if ($null -eq $nameNode -or [string]::IsNullOrWhiteSpace($nameNode.InnerText)) {
+      continue
+    }
+
+    $fieldName = $nameNode.InnerText.Trim()
+    if (-not $AttributeTypes.ContainsKey($fieldName)) {
+      continue
+    }
+
+    $typeNode = $field.SelectSingleNode("*[local-name()='type']")
+    if ($null -eq $typeNode) {
+      $typeNode = $Metadata.CreateElement("type")
+      [void]$field.AppendChild($typeNode)
+    }
+
+    $newType = $AttributeTypes[$fieldName]
+    if ($typeNode.InnerText -ne $newType) {
+      $typeNode.InnerText = $newType
+      $updatedCount++
+    }
+  }
+
+  return $updatedCount
+}
+
 function New-MetadataXmlWithDataDictionaryLink {
   param(
     [string]$XmlPath,
-    [string]$DataDictionaryBaseUrl
+    [string]$DataDictionaryBaseUrl,
+    [hashtable]$AttributeTypes
   )
 
   $metadataUuid = Get-MetadataUuid -XmlPath $XmlPath
@@ -263,9 +365,32 @@ function New-MetadataXmlWithDataDictionaryLink {
   }
 
   $dictionaryUrl = "$DataDictionaryBaseUrl`?key=$metadataUuid"
-  $xmlContent = [IO.File]::ReadAllText($XmlPath, [Text.Encoding]::UTF8)
+  [xml]$metadata = [IO.File]::ReadAllText($XmlPath, [Text.Encoding]::UTF8)
+  $updatedTypeCount = Set-DataDictionaryFieldTypes -Metadata $metadata -AttributeTypes $AttributeTypes
+
+  $settings = New-Object Xml.XmlWriterSettings
+  $settings.Encoding = New-Object Text.UTF8Encoding $false
+  $settings.Indent = $true
+  $xmlWriterBuilder = New-Object Text.StringBuilder
+  $xmlWriter = [Xml.XmlWriter]::Create($xmlWriterBuilder, $settings)
+  try {
+    $metadata.Save($xmlWriter)
+  }
+  finally {
+    $xmlWriter.Close()
+  }
+
+  $xmlContent = $xmlWriterBuilder.ToString()
   if ($xmlContent -like "*$dictionaryUrl*") {
-    return $XmlPath
+    if ($updatedTypeCount -eq 0) {
+      return $XmlPath
+    }
+
+    $tempXml = Join-Path ([IO.Path]::GetTempPath()) ("metadata_with_data_dictionary_{0}.xml" -f ([guid]::NewGuid()))
+    $utf8NoBom = New-Object Text.UTF8Encoding $false
+    [IO.File]::WriteAllText($tempXml, $xmlContent, $utf8NoBom)
+    Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
+    return $tempXml
   }
 
   $escapedDictionaryUrl = ConvertTo-XmlEscapedText -Text $dictionaryUrl
@@ -277,7 +402,15 @@ function New-MetadataXmlWithDataDictionaryLink {
   }
   else {
     Write-Warning "Nao encontrei <gmd:URL/> vazio nem placeholder do segundo link; importando sem inserir link do dicionario de dados."
-    return $XmlPath
+    if ($updatedTypeCount -eq 0) {
+      return $XmlPath
+    }
+
+    $tempXml = Join-Path ([IO.Path]::GetTempPath()) ("metadata_with_data_dictionary_{0}.xml" -f ([guid]::NewGuid()))
+    $utf8NoBom = New-Object Text.UTF8Encoding $false
+    [IO.File]::WriteAllText($tempXml, $xmlContent, $utf8NoBom)
+    Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
+    return $tempXml
   }
 
   $tempXml = Join-Path ([IO.Path]::GetTempPath()) ("metadata_with_data_dictionary_{0}.xml" -f ([guid]::NewGuid()))
@@ -285,6 +418,9 @@ function New-MetadataXmlWithDataDictionaryLink {
   [IO.File]::WriteAllText($tempXml, $updatedContent, $utf8NoBom)
   Write-Host "Link do dicionario de dados inserido no XML temporario:"
   Write-Host "  $dictionaryUrl"
+  if ($updatedTypeCount -gt 0) {
+    Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
+  }
   return $tempXml
 }
 
@@ -459,6 +595,7 @@ Write-Host "Titulo GeoServer: $GeoServerLayerTitle"
 
 $geoCredential = $null
 $geoAuth = $null
+$geoServerAttributeTypes = @{}
 
 if ($SkipGeoServer) {
   Write-Host ""
@@ -613,6 +750,15 @@ else {
   finally {
     Remove-Item -LiteralPath $tmpBody.FullName -Force -ErrorAction SilentlyContinue
   }
+
+  if ($layerResource -eq 'featuretypes') {
+    Write-Host ""
+    Write-Host "Coletando tipos dos atributos publicados no GeoServer..."
+    $geoServerAttributeTypes = Get-GeoServerAttributeTypes -GeoServer $GeoServer -Workspace $Workspace -Store $Store -Layer $Layer -GeoAuth $geoAuth
+    if ($geoServerAttributeTypes.Count -gt 0) {
+      Write-Host "Tipos coletados: $($geoServerAttributeTypes.Count)"
+    }
+  }
 }
 
 if ($SkipCatalog) {
@@ -623,7 +769,7 @@ else {
   Write-Host ""
   Write-Host "5/5 - Importando XML no catalogo GeoNetwork..."
   Write-Host "Abrindo sessao e capturando token XSRF do GeoNetwork..."
-  $metadataUploadPath = New-MetadataXmlWithDataDictionaryLink -XmlPath $xmlPath -DataDictionaryBaseUrl $DataDictionaryBaseUrl
+  $metadataUploadPath = New-MetadataXmlWithDataDictionaryLink -XmlPath $xmlPath -DataDictionaryBaseUrl $DataDictionaryBaseUrl -AttributeTypes $geoServerAttributeTypes
   if ($SameCredentialForCatalog) {
     if ($null -eq $geoCredential) {
       $catalogCredential = Get-Credential -Message "Credenciais do Catalogo QAS / GeoNetwork"
