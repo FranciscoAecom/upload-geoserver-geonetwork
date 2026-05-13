@@ -1,10 +1,10 @@
 param(
-  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\sa_car_sc\SICAR\20260301\00",
+  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\sa_car_am\SICAR\20260301\00",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
-  [string]$Store = "pol_pcd_sa_car_sc_20260301",
-  [string]$Layer = "pol_pcd_sa_car_sc_20260301",
+  [string]$Store = "pol_pcd_sa_car_am_20260301",
+  [string]$Layer = "pol_pcd_sa_car_am_20260301",
   [string]$LayerTitle,
   [string]$Style,
   [string]$CatalogGroup = "2",
@@ -105,6 +105,21 @@ function ConvertTo-XmlEscapedText {
   }
 
   return $builder.ToString()
+}
+
+function ConvertTo-XmlMarkupEscapedText {
+  param([string]$Text)
+
+  if ($null -eq $Text) {
+    return $null
+  }
+
+  return $Text.
+    Replace("&", "&amp;").
+    Replace("<", "&lt;").
+    Replace(">", "&gt;").
+    Replace('"', "&quot;").
+    Replace("'", "&apos;")
 }
 
 function ConvertTo-JsonEscapedText {
@@ -218,6 +233,20 @@ function Get-AppCarLayerTitle {
   return ("{0}rea de Preserva{1}{2}o Permanente - Im{3}veis {4}" -f $aAcuteUpper, $cCedilla, $aTilde, $oAcute, $stateName)
 }
 
+function Get-SaCarLayerTitle {
+  param([string]$LayerName)
+
+  $stateName = Get-StateNameFromLayer -LayerName $LayerName
+  if ([string]::IsNullOrWhiteSpace($stateName)) {
+    return $null
+  }
+
+  $aTilde = [char]0x00E3
+  $oAcute = [char]0x00F3
+
+  return ("Servid{0}o Administrativa - Im{1}veis {2}" -f $aTilde, $oAcute, $stateName)
+}
+
 function Get-MetadataTitle {
   param([string]$XmlPath)
 
@@ -314,23 +343,37 @@ function Get-GeoServerAttributeTypes {
 
 function Set-DataDictionaryFieldTypes {
   param(
-    [xml]$Metadata,
+    [string]$XmlContent,
     [hashtable]$AttributeTypes
   )
 
   if ($null -eq $AttributeTypes -or $AttributeTypes.Count -eq 0) {
-    return 0
+    return @{
+      Content = $XmlContent
+      Count = 0
+    }
   }
 
-  $updatedCount = 0
-  $fields = @($Metadata.SelectNodes("//*[local-name()='data_dictionary']/*[local-name()='field']"))
-  foreach ($field in $fields) {
-    $nameNode = $field.SelectSingleNode("*[local-name()='name']")
-    if ($null -eq $nameNode -or [string]::IsNullOrWhiteSpace($nameNode.InnerText)) {
-      continue
+  $dictionaryMatch = [regex]::Match($XmlContent, "(?is)<data_dictionary\b[^>]*>.*?</data_dictionary>")
+  if (-not $dictionaryMatch.Success) {
+    return @{
+      Content = $XmlContent
+      Count = 0
+    }
+  }
+
+  $counter = [pscustomobject]@{ Count = 0 }
+  $dictionaryXml = $dictionaryMatch.Value
+  $updatedDictionaryXml = [regex]::Replace($dictionaryXml, "(?is)<field\b[^>]*>.*?</field>", {
+    param($match)
+
+    $fieldXml = $match.Value
+    $nameMatch = [regex]::Match($fieldXml, "(?is)<name>\s*([^<]+?)\s*</name>")
+    if (-not $nameMatch.Success) {
+      return $fieldXml
     }
 
-    $fieldName = $nameNode.InnerText.Trim()
+    $fieldName = $nameMatch.Groups[1].Value.Trim()
     $newType = $null
     if ($AttributeTypes.ContainsKey($fieldName)) {
       $newType = $AttributeTypes[$fieldName]
@@ -346,22 +389,32 @@ function Set-DataDictionaryFieldTypes {
     }
 
     if ([string]::IsNullOrWhiteSpace($newType)) {
-      continue
+      return $fieldXml
     }
 
-    $typeNode = $field.SelectSingleNode("*[local-name()='type']")
-    if ($null -eq $typeNode) {
-      $typeNode = $Metadata.CreateElement("type")
-      [void]$field.AppendChild($typeNode)
+    $escapedType = ConvertTo-XmlEscapedText -Text $newType
+    if ($fieldXml -match "(?is)<type>.*?</type>") {
+      $updatedFieldXml = [regex]::Replace($fieldXml, "(?is)<type>.*?</type>", "<type>$escapedType</type>", 1)
+    }
+    else {
+      $updatedFieldXml = [regex]::Replace($fieldXml, "(?is)(</field>)", "  <type>$escapedType</type>`r`n`$1", 1)
     }
 
-    if ($typeNode.InnerText -ne $newType) {
-      $typeNode.InnerText = $newType
-      $updatedCount++
+    if ($updatedFieldXml -ne $fieldXml) {
+      $counter.Count++
     }
+
+    return $updatedFieldXml
+  })
+
+  $updatedContent = $XmlContent.Substring(0, $dictionaryMatch.Index) +
+    $updatedDictionaryXml +
+    $XmlContent.Substring($dictionaryMatch.Index + $dictionaryMatch.Length)
+
+  return @{
+    Content = $updatedContent
+    Count = $counter.Count
   }
-
-  return $updatedCount
 }
 
 function New-MetadataXmlWithDataDictionaryLink {
@@ -378,23 +431,10 @@ function New-MetadataXmlWithDataDictionaryLink {
   }
 
   $dictionaryUrl = "$DataDictionaryBaseUrl`?key=$metadataUuid"
-  [xml]$metadata = [IO.File]::ReadAllText($XmlPath, [Text.Encoding]::UTF8)
-  $updatedTypeCount = Set-DataDictionaryFieldTypes -Metadata $metadata -AttributeTypes $AttributeTypes
-
-  $settings = New-Object Xml.XmlWriterSettings
-  $settings.Encoding = New-Object Text.UTF8Encoding $false
-  $settings.Indent = $true
-  $xmlWriterBuilder = New-Object Text.StringBuilder
-  $xmlWriter = [Xml.XmlWriter]::Create($xmlWriterBuilder, $settings)
-  try {
-    $metadata.Save($xmlWriter)
-  }
-  finally {
-    $xmlWriter.Close()
-  }
-
-  $xmlContent = $xmlWriterBuilder.ToString()
-  $xmlContent = [regex]::Replace($xmlContent, '^\s*<\?xml\s+version="1\.0"\s+encoding="utf-16"\s*\?>', '<?xml version="1.0" encoding="UTF-8"?>', 1)
+  $xmlContent = [IO.File]::ReadAllText($XmlPath, [Text.Encoding]::UTF8)
+  $typeUpdateResult = Set-DataDictionaryFieldTypes -XmlContent $xmlContent -AttributeTypes $AttributeTypes
+  $xmlContent = $typeUpdateResult.Content
+  $updatedTypeCount = $typeUpdateResult.Count
   if ($xmlContent -like "*$dictionaryUrl*") {
     if ($updatedTypeCount -eq 0) {
       return $XmlPath
@@ -591,7 +631,13 @@ if ([string]::IsNullOrWhiteSpace($LayerTitle)) {
 if ([string]::IsNullOrWhiteSpace($LayerTitle)) {
   $LayerTitle = $Layer
 }
-$GeoServerLayerTitle = Get-AppCarLayerTitle -LayerName $Layer
+$GeoServerLayerTitle = $null
+if ($Layer -match "_app_car_") {
+  $GeoServerLayerTitle = Get-AppCarLayerTitle -LayerName $Layer
+}
+elseif ($Layer -match "_sa_car_") {
+  $GeoServerLayerTitle = Get-SaCarLayerTitle -LayerName $Layer
+}
 if ([string]::IsNullOrWhiteSpace($GeoServerLayerTitle)) {
   $GeoServerLayerTitle = $LayerTitle
 }
@@ -644,7 +690,7 @@ else {
 
   Write-Host ""
   Write-Host "2/5 - Ajustando titulo da camada..."
-  $escapedLayerTitle = ConvertTo-XmlEscapedText -Text $GeoServerLayerTitle
+  $escapedLayerTitle = ConvertTo-XmlMarkupEscapedText -Text $GeoServerLayerTitle
 
   if ($layerResource -eq 'featuretypes') {
     $resourceBody = @"
