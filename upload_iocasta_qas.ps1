@@ -1,10 +1,10 @@
 param(
-  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\ur_car_ac\AECOM\20260514\00",
+  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\imb\uso_do_solo_2010\MapBiomas\20250815\00\teste",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
-  [string]$Store = "pol_pcd_ur_car_ac_20260514",
-  [string]$Layer = "pol_pcd_ur_car_ac_20260514",
+  [string]$Store = "rst_imb_lulc_20100101",
+  [string]$Layer = "rst_imb_lulc_20100101",
   [string]$LayerTitle,
   [string]$Style,
   [string]$CatalogGroup = "2",
@@ -258,6 +258,20 @@ function Get-UrCarLayerTitle {
   $oAcute = [char]0x00F3
 
   return ("Uso Restrito - Im{0}veis {1}" -f $oAcute, $stateName)
+}
+
+function Get-ImbLulcLayerTitle {
+  param([string]$LayerName)
+
+  if ($LayerName -notmatch "^rst_imb_lulc_(\d{4})\d{4}$") {
+    return $null
+  }
+
+  $year = $Matches[1]
+  $cCedilla = [char]0x00E7
+  $aTilde = [char]0x00E3
+
+  return ("Uso e cobertura da terra de {0} - Cole{1}{2}o 10" -f $year, $cCedilla, $aTilde)
 }
 
 function Get-MetadataTitle {
@@ -515,6 +529,12 @@ function New-SldWithStyleName {
   if ($null -eq $userStyleNode) {
     $userStyleNode = $sld.SelectSingleNode("/sld:StyledLayerDescriptor/sld:NamedLayer/sld:UserStyle/se:Name", $namespaceManager)
   }
+  if ($null -eq $userStyleNode) {
+    $userStyleNode = $sld.SelectSingleNode("/sld:StyledLayerDescriptor/sld:UserLayer/sld:UserStyle/sld:Name", $namespaceManager)
+  }
+  if ($null -eq $userStyleNode) {
+    $userStyleNode = $sld.SelectSingleNode("/sld:StyledLayerDescriptor/sld:UserLayer/sld:UserStyle/se:Name", $namespaceManager)
+  }
   if ($null -ne $userStyleNode) {
     $userStyleNode.InnerText = $StyleName
   }
@@ -659,6 +679,9 @@ elseif ($Layer -match "_sa_car_") {
 }
 elseif ($Layer -match "_ur_car_") {
   $GeoServerLayerTitle = Get-UrCarLayerTitle -LayerName $Layer
+}
+elseif ($Layer -match "^rst_imb_lulc_") {
+  $GeoServerLayerTitle = Get-ImbLulcLayerTitle -LayerName $Layer
 }
 if ([string]::IsNullOrWhiteSpace($GeoServerLayerTitle)) {
   $GeoServerLayerTitle = $LayerTitle
