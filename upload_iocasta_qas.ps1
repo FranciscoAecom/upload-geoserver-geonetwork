@@ -1,10 +1,10 @@
 param(
-  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\sa_car_am\SICAR\20260301\00",
+  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\ur_car_ac\AECOM\20260514\00",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
-  [string]$Store = "pol_pcd_sa_car_am_20260301",
-  [string]$Layer = "pol_pcd_sa_car_am_20260301",
+  [string]$Store = "pol_pcd_ur_car_ac_20260514",
+  [string]$Layer = "pol_pcd_ur_car_ac_20260514",
   [string]$LayerTitle,
   [string]$Style,
   [string]$CatalogGroup = "2",
@@ -245,6 +245,19 @@ function Get-SaCarLayerTitle {
   $oAcute = [char]0x00F3
 
   return ("Servid{0}o Administrativa - Im{1}veis {2}" -f $aTilde, $oAcute, $stateName)
+}
+
+function Get-UrCarLayerTitle {
+  param([string]$LayerName)
+
+  $stateName = Get-StateNameFromLayer -LayerName $LayerName
+  if ([string]::IsNullOrWhiteSpace($stateName)) {
+    return $null
+  }
+
+  $oAcute = [char]0x00F3
+
+  return ("Uso Restrito - Im{0}veis {1}" -f $oAcute, $stateName)
 }
 
 function Get-MetadataTitle {
@@ -490,12 +503,18 @@ function New-SldWithStyleName {
   $namespaceManager.AddNamespace("sld", "http://www.opengis.net/sld")
   $namespaceManager.AddNamespace("se", "http://www.opengis.net/se")
 
-  $namedLayerNode = $sld.SelectSingleNode("/sld:StyledLayerDescriptor/sld:NamedLayer/se:Name", $namespaceManager)
+  $namedLayerNode = $sld.SelectSingleNode("/sld:StyledLayerDescriptor/sld:NamedLayer/sld:Name", $namespaceManager)
+  if ($null -eq $namedLayerNode) {
+    $namedLayerNode = $sld.SelectSingleNode("/sld:StyledLayerDescriptor/sld:NamedLayer/se:Name", $namespaceManager)
+  }
   if ($null -ne $namedLayerNode) {
     $namedLayerNode.InnerText = $LayerName
   }
 
-  $userStyleNode = $sld.SelectSingleNode("/sld:StyledLayerDescriptor/sld:NamedLayer/sld:UserStyle/se:Name", $namespaceManager)
+  $userStyleNode = $sld.SelectSingleNode("/sld:StyledLayerDescriptor/sld:NamedLayer/sld:UserStyle/sld:Name", $namespaceManager)
+  if ($null -eq $userStyleNode) {
+    $userStyleNode = $sld.SelectSingleNode("/sld:StyledLayerDescriptor/sld:NamedLayer/sld:UserStyle/se:Name", $namespaceManager)
+  }
   if ($null -ne $userStyleNode) {
     $userStyleNode.InnerText = $StyleName
   }
@@ -637,6 +656,9 @@ if ($Layer -match "_app_car_") {
 }
 elseif ($Layer -match "_sa_car_") {
   $GeoServerLayerTitle = Get-SaCarLayerTitle -LayerName $Layer
+}
+elseif ($Layer -match "_ur_car_") {
+  $GeoServerLayerTitle = Get-UrCarLayerTitle -LayerName $Layer
 }
 if ([string]::IsNullOrWhiteSpace($GeoServerLayerTitle)) {
   $GeoServerLayerTitle = $LayerTitle
