@@ -1,10 +1,10 @@
 param(
-  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\imb\uso_do_solo_2010\MapBiomas\20250815\00\teste",
+  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\ur_car_mg\AECOM\20260514\00",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
-  [string]$Store = "rst_imb_lulc_20100101",
-  [string]$Layer = "rst_imb_lulc_20100101",
+  [string]$Store = "pol_pcd_ur_car_mg_20260514",
+  [string]$Layer = "pol_pcd_ur_car_mg_20260514",
   [string]$LayerTitle,
   [string]$Style,
   [string]$CatalogGroup = "2",
