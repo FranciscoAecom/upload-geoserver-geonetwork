@@ -1,10 +1,10 @@
 param(
-  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\ur_car_rn\AECOM\20260514\00",
+  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\imb\uso_do_solo_2011\MapBiomas\20250815\00",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
-  [string]$Store = "pol_pcd_ur_car_rn_20260514",
-  [string]$Layer = "pol_pcd_ur_car_rn_20260514",
+  [string]$Store,
+  [string]$Layer,
   [string]$LayerTitle,
   [string]$Style,
   [string]$CatalogGroup = "2",
@@ -263,15 +263,29 @@ function Get-UrCarLayerTitle {
 function Get-ImbLulcLayerTitle {
   param([string]$LayerName)
 
-  if ($LayerName -notmatch "^rst_imb_lulc_(\d{4})\d{4}$") {
+  if ($LayerName -notmatch "^rst_imb_lulc_(\d{4})(\d*)$") {
     return $null
   }
 
   $year = $Matches[1]
+  $suffix = $Matches[2]
   $cCedilla = [char]0x00E7
   $aTilde = [char]0x00E3
 
-  return ("Uso e cobertura da terra de {0} - Cole{1}{2}o 10" -f $year, $cCedilla, $aTilde)
+  if ($suffix -match "^\d{3}") {
+    $collection = [int]$Matches[0]
+    return ("Uso e cobertura da terra de {0} - Cole{1}{2}o {3}" -f $year, $cCedilla, $aTilde, $collection)
+  }
+
+  return ("Uso e cobertura da terra de {0}" -f $year)
+}
+
+function Assert-KnownLayerNaming {
+  param([string]$LayerName)
+
+  if ($LayerName -match "^rst_imb_lulc_" -and [string]::IsNullOrWhiteSpace((Get-ImbLulcLayerTitle -LayerName $LayerName))) {
+    Write-Warning "Nao consegui interpretar ano/colecao pelo nome da camada IMB LULC '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
+  }
 }
 
 function Get-MetadataTitle {
@@ -631,6 +645,20 @@ if (-not (Test-Path -LiteralPath $Folder)) {
 $dataPath = Resolve-RequiredDataFile -Path $Folder
 $sldPath = Resolve-RequiredFile -Path $Folder -Pattern "*.sld"
 $xmlPath = Resolve-RequiredMetadataFile -Path $Folder
+
+$derivedLayerName = [IO.Path]::GetFileNameWithoutExtension($dataPath)
+if ([string]::IsNullOrWhiteSpace($Store) -and [string]::IsNullOrWhiteSpace($Layer)) {
+  $Store = $derivedLayerName
+  $Layer = $derivedLayerName
+}
+elseif ([string]::IsNullOrWhiteSpace($Store)) {
+  $Store = $Layer
+}
+elseif ([string]::IsNullOrWhiteSpace($Layer)) {
+  $Layer = $Store
+}
+
+Assert-KnownLayerNaming -LayerName $Layer
 
 $dataExtension = [IO.Path]::GetExtension($dataPath).ToLowerInvariant()
 switch ($dataExtension) {

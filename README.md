@@ -51,6 +51,52 @@ foreach ($uf in $ufs) {
 }
 ```
 
+Para bases IMB LULC / MapBiomas, o nome da camada segue uma regra propria porque o
+script usa esse nome para gerar o titulo amigavel no GeoServer:
+
+```text
+rst_imb_lulc_AAAA...
+```
+
+Onde:
+
+- `AAAA` e o ano da base.
+- O sufixo depois do ano pode carregar a colecao e a versao/data usada no pacote de origem.
+- Quando houver pelo menos 3 digitos depois do ano, o script interpreta os 3 primeiros como colecao.
+
+Exemplo:
+
+```text
+rst_imb_lulc_20110101
+```
+
+Esse nome representa a base de 2011 da colecao 010 e gera o titulo:
+
+```text
+Uso e cobertura da terra de 2011 - Colecao 10
+```
+
+Se `Store` e `Layer` nao forem informados, o script usa automaticamente o nome do
+arquivo de dados (`.gpkg`, `.rst` ou `.tif`) sem a extensao. Por isso, para esse
+fluxo automatico funcionar, o arquivo de dados deve seguir a convencao de nome.
+
+Exemplo:
+
+```powershell
+.\upload_iocasta_qas.ps1 `
+  -Folder "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\imb\uso_do_solo_2011\MapBiomas\20250815\00\teste" `
+  -Workspace "gold" `
+  -SameCredentialForCatalog
+```
+
+Nesse caso, se o arquivo de dados se chamar `rst_imb_lulc_20110101.tif`, o script
+vai usar automaticamente:
+
+```text
+Store: rst_imb_lulc_20110101
+Layer: rst_imb_lulc_20110101
+```
+
 ## Parametros principais
 
 | Parametro | Padrao | Descricao |
@@ -59,8 +105,8 @@ foreach ($uf in $ufs) {
 | `GeoServer` | `https://gisqas.iocasta.com.br/geoserver` | URL base do GeoServer. |
 | `Catalog` | `https://catalogqas.iocasta.com.br` | URL base do GeoNetwork. |
 | `Workspace` | `gold` | Workspace de destino no GeoServer. |
-| `Store` | `pol_pcd_app_car_ba_20260301` | Nome do datastore no GeoServer. |
-| `Layer` | `pol_pcd_app_car_ba_20260301` | Nome da camada publicada. |
+| `Store` | nome do arquivo de dados | Nome do datastore/coveragestore no GeoServer. Se omitido, usa o nome do arquivo de dados sem extensao. |
+| `Layer` | nome do arquivo de dados | Nome da camada publicada. Se omitido, usa o nome do arquivo de dados sem extensao. |
 | `LayerTitle` | extraido do XML | Titulo usado no catalogo quando informado ou detectado. |
 | `Style` | nome do arquivo SLD | Nome do estilo no GeoServer. |
 | `CatalogGroup` | `2` | Grupo usado na importacao do GeoNetwork. |
