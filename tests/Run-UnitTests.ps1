@@ -143,6 +143,48 @@ try {
   Assert-Equal $dictionaryResult.Count 1 "Deve inserir tipo no dicionario de dados"
   Assert-True ($dictionaryResult.Content -like "*<type>Integer64</type>*") "XML atualizado deve conter tipo inserido"
 
+  $dictionaryWithExistingType = @"
+<root>
+  <data_dictionary>
+    <field>
+      <name>area</name>
+      <type>String</type>
+    </field>
+  </data_dictionary>
+</root>
+"@
+  $existingTypeResult = Set-DataDictionaryFieldTypes -XmlContent $dictionaryWithExistingType -AttributeTypes @{ area = "Real" }
+  Assert-Equal $existingTypeResult.Count 1 "Deve atualizar tipo existente no dicionario"
+  Assert-True ($existingTypeResult.Content -like "*<type>Real</type>*") "XML atualizado deve substituir tipo antigo"
+
+  $dictionaryWithAliases = @"
+<root>
+  <data_dictionary>
+    <field>
+      <name>cod_imovel</name>
+    </field>
+    <field>
+      <name>municipio</name>
+    </field>
+    <field>
+      <name>sem_tipo</name>
+    </field>
+  </data_dictionary>
+</root>
+"@
+  $aliasResult = Set-DataDictionaryFieldTypes -XmlContent $dictionaryWithAliases -AttributeTypes @{
+    "sdb_cod_imovel" = "String"
+    "cadastro_municipio" = "String"
+  }
+  Assert-Equal $aliasResult.Count 2 "Deve atualizar campos por prefixo sdb_ e sufixo unico"
+  Assert-True ($aliasResult.Content -like "*<name>cod_imovel</name>*<type>String</type>*") "XML atualizado deve conter tipo para campo com sdb_"
+  Assert-True ($aliasResult.Content -like "*<name>municipio</name>*<type>String</type>*") "XML atualizado deve conter tipo para campo por sufixo"
+
+  $noDictionaryXml = "<root><field><name>codigo</name></field></root>"
+  $noDictionaryResult = Set-DataDictionaryFieldTypes -XmlContent $noDictionaryXml -AttributeTypes @{ codigo = "Integer64" }
+  Assert-Equal $noDictionaryResult.Count 0 "Nao deve alterar XML sem data_dictionary"
+  Assert-Equal $noDictionaryResult.Content $noDictionaryXml "XML sem data_dictionary deve permanecer igual"
+
   Assert-Throws { Assert-GeoNetworkModernImportSucceeded -Output "" } "Deve rejeitar resposta vazia do GeoNetwork"
   Assert-Throws { Assert-GeoNetworkModernImportSucceeded -Output "<html></html>" } "Deve rejeitar HTML do GeoNetwork"
   Assert-Throws { Assert-GeoNetworkModernImportSucceeded -Output '{"errors":["falha"]}' } "Deve rejeitar relatorio com erros"

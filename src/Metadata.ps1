@@ -32,6 +32,113 @@ function Get-MetadataUuid {
   return $uuidNode.InnerText.Trim()
 }
 
+function Get-DataDictionaryFieldType {
+  param(
+    [string]$FieldName,
+    [hashtable]$AttributeTypes
+  )
+
+  if ($AttributeTypes.ContainsKey($FieldName)) {
+    return $AttributeTypes[$FieldName]
+  }
+
+  if ($AttributeTypes.ContainsKey("sdb_$FieldName")) {
+    return $AttributeTypes["sdb_$FieldName"]
+  }
+
+  $suffixMatches = @($AttributeTypes.Keys | Where-Object { $_ -like "*_$FieldName" })
+  if ($suffixMatches.Count -eq 1) {
+    return $AttributeTypes[$suffixMatches[0]]
+  }
+
+  return $null
+}
+
+function Set-DataDictionaryFieldTypesWithXmlParser {
+  param(
+    [string]$DictionaryXml,
+    [hashtable]$AttributeTypes
+  )
+
+  $document = New-Object Xml.XmlDocument
+  $document.PreserveWhitespace = $true
+  $document.LoadXml($DictionaryXml)
+
+  $counter = 0
+  $fieldNodes = @($document.DocumentElement.SelectNodes(".//*[local-name()='field']"))
+  foreach ($fieldNode in $fieldNodes) {
+    $nameNode = $fieldNode.SelectSingleNode("./*[local-name()='name']")
+    if ($null -eq $nameNode -or [string]::IsNullOrWhiteSpace($nameNode.InnerText)) {
+      continue
+    }
+
+    $fieldName = $nameNode.InnerText.Trim()
+    $newType = Get-DataDictionaryFieldType -FieldName $fieldName -AttributeTypes $AttributeTypes
+    if ([string]::IsNullOrWhiteSpace($newType)) {
+      continue
+    }
+
+    $typeNode = $fieldNode.SelectSingleNode("./*[local-name()='type']")
+    if ($null -eq $typeNode) {
+      $typeNode = $document.CreateElement("type", $fieldNode.NamespaceURI)
+      [void]$fieldNode.AppendChild($typeNode)
+    }
+
+    if ($typeNode.InnerText -ne $newType) {
+      $typeNode.InnerText = $newType
+      $counter++
+    }
+  }
+
+  return @{
+    Content = $document.DocumentElement.OuterXml
+    Count = $counter
+  }
+}
+
+function Set-DataDictionaryFieldTypesWithRegex {
+  param(
+    [string]$DictionaryXml,
+    [hashtable]$AttributeTypes
+  )
+
+  $counter = [pscustomobject]@{ Count = 0 }
+  $updatedDictionaryXml = [regex]::Replace($DictionaryXml, "(?is)<field\b[^>]*>.*?</field>", {
+    param($match)
+
+    $fieldXml = $match.Value
+    $nameMatch = [regex]::Match($fieldXml, "(?is)<name>\s*([^<]+?)\s*</name>")
+    if (-not $nameMatch.Success) {
+      return $fieldXml
+    }
+
+    $fieldName = $nameMatch.Groups[1].Value.Trim()
+    $newType = Get-DataDictionaryFieldType -FieldName $fieldName -AttributeTypes $AttributeTypes
+    if ([string]::IsNullOrWhiteSpace($newType)) {
+      return $fieldXml
+    }
+
+    $escapedType = ConvertTo-XmlEscapedText -Text $newType
+    if ($fieldXml -match "(?is)<type>.*?</type>") {
+      $updatedFieldXml = [regex]::Replace($fieldXml, "(?is)<type>.*?</type>", "<type>$escapedType</type>", 1)
+    }
+    else {
+      $updatedFieldXml = [regex]::Replace($fieldXml, "(?is)(</field>)", "  <type>$escapedType</type>`r`n`$1", 1)
+    }
+
+    if ($updatedFieldXml -ne $fieldXml) {
+      $counter.Count++
+    }
+
+    return $updatedFieldXml
+  })
+
+  return @{
+    Content = $updatedDictionaryXml
+    Count = $counter.Count
+  }
+}
+
 function Set-DataDictionaryFieldTypes {
   param(
     [string]$XmlContent,
@@ -53,59 +160,67 @@ function Set-DataDictionaryFieldTypes {
     }
   }
 
-  $counter = [pscustomobject]@{ Count = 0 }
   $dictionaryXml = $dictionaryMatch.Value
-  $updatedDictionaryXml = [regex]::Replace($dictionaryXml, "(?is)<field\b[^>]*>.*?</field>", {
-    param($match)
-
-    $fieldXml = $match.Value
-    $nameMatch = [regex]::Match($fieldXml, "(?is)<name>\s*([^<]+?)\s*</name>")
-    if (-not $nameMatch.Success) {
-      return $fieldXml
-    }
-
-    $fieldName = $nameMatch.Groups[1].Value.Trim()
-    $newType = $null
-    if ($AttributeTypes.ContainsKey($fieldName)) {
-      $newType = $AttributeTypes[$fieldName]
-    }
-    elseif ($AttributeTypes.ContainsKey("sdb_$fieldName")) {
-      $newType = $AttributeTypes["sdb_$fieldName"]
-    }
-    else {
-      $suffixMatches = @($AttributeTypes.Keys | Where-Object { $_ -like "*_$fieldName" })
-      if ($suffixMatches.Count -eq 1) {
-        $newType = $AttributeTypes[$suffixMatches[0]]
-      }
-    }
-
-    if ([string]::IsNullOrWhiteSpace($newType)) {
-      return $fieldXml
-    }
-
-    $escapedType = ConvertTo-XmlEscapedText -Text $newType
-    if ($fieldXml -match "(?is)<type>.*?</type>") {
-      $updatedFieldXml = [regex]::Replace($fieldXml, "(?is)<type>.*?</type>", "<type>$escapedType</type>", 1)
-    }
-    else {
-      $updatedFieldXml = [regex]::Replace($fieldXml, "(?is)(</field>)", "  <type>$escapedType</type>`r`n`$1", 1)
-    }
-
-    if ($updatedFieldXml -ne $fieldXml) {
-      $counter.Count++
-    }
-
-    return $updatedFieldXml
-  })
+  try {
+    $updateResult = Set-DataDictionaryFieldTypesWithXmlParser -DictionaryXml $dictionaryXml -AttributeTypes $AttributeTypes
+  }
+  catch {
+    $updateResult = Set-DataDictionaryFieldTypesWithRegex -DictionaryXml $dictionaryXml -AttributeTypes $AttributeTypes
+  }
 
   $updatedContent = $XmlContent.Substring(0, $dictionaryMatch.Index) +
-    $updatedDictionaryXml +
+    $updateResult.Content +
     $XmlContent.Substring($dictionaryMatch.Index + $dictionaryMatch.Length)
 
   return @{
     Content = $updatedContent
-    Count = $counter.Count
+    Count = $updateResult.Count
   }
+}
+
+function Get-DataDictionaryUrl {
+  param(
+    [string]$DataDictionaryBaseUrl,
+    [string]$MetadataUuid
+  )
+
+  return "$DataDictionaryBaseUrl`?key=$MetadataUuid"
+}
+
+function Add-DataDictionaryLink {
+  param(
+    [string]$XmlContent,
+    [string]$DictionaryUrl
+  )
+
+  $escapedDictionaryUrl = ConvertTo-XmlEscapedText -Text $DictionaryUrl
+  if ($XmlContent -match "<gmd:URL\s*/>") {
+    return @{
+      Content = [regex]::Replace($XmlContent, "<gmd:URL\s*/>", "<gmd:URL>$escapedDictionaryUrl</gmd:URL>", 1)
+      Inserted = $true
+    }
+  }
+
+  if ($XmlContent -like "*Estrutura de 2 link associado*") {
+    return @{
+      Content = $XmlContent.Replace("Estrutura de 2 link associado", $escapedDictionaryUrl)
+      Inserted = $true
+    }
+  }
+
+  return @{
+    Content = $XmlContent
+    Inserted = $false
+  }
+}
+
+function Write-TemporaryMetadataXml {
+  param([string]$XmlContent)
+
+  $tempXml = Join-Path ([IO.Path]::GetTempPath()) ("metadata_with_data_dictionary_{0}.xml" -f ([guid]::NewGuid()))
+  $utf8NoBom = New-Object Text.UTF8Encoding $false
+  [IO.File]::WriteAllText($tempXml, $XmlContent, $utf8NoBom)
+  return $tempXml
 }
 
 function New-MetadataXmlWithDataDictionaryLink {
@@ -121,7 +236,7 @@ function New-MetadataXmlWithDataDictionaryLink {
     return $XmlPath
   }
 
-  $dictionaryUrl = "$DataDictionaryBaseUrl`?key=$metadataUuid"
+  $dictionaryUrl = Get-DataDictionaryUrl -DataDictionaryBaseUrl $DataDictionaryBaseUrl -MetadataUuid $metadataUuid
   $xmlContent = [IO.File]::ReadAllText($XmlPath, [Text.Encoding]::UTF8)
   $typeUpdateResult = Set-DataDictionaryFieldTypes -XmlContent $xmlContent -AttributeTypes $AttributeTypes
   $xmlContent = $typeUpdateResult.Content
@@ -131,36 +246,24 @@ function New-MetadataXmlWithDataDictionaryLink {
       return $XmlPath
     }
 
-    $tempXml = Join-Path ([IO.Path]::GetTempPath()) ("metadata_with_data_dictionary_{0}.xml" -f ([guid]::NewGuid()))
-    $utf8NoBom = New-Object Text.UTF8Encoding $false
-    [IO.File]::WriteAllText($tempXml, $xmlContent, $utf8NoBom)
+    $tempXml = Write-TemporaryMetadataXml -XmlContent $xmlContent
     Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
     return $tempXml
   }
 
-  $escapedDictionaryUrl = ConvertTo-XmlEscapedText -Text $dictionaryUrl
-  if ($xmlContent -match "<gmd:URL\s*/>") {
-    $updatedContent = [regex]::Replace($xmlContent, "<gmd:URL\s*/>", "<gmd:URL>$escapedDictionaryUrl</gmd:URL>", 1)
-  }
-  elseif ($xmlContent -like "*Estrutura de 2 link associado*") {
-    $updatedContent = $xmlContent.Replace("Estrutura de 2 link associado", $escapedDictionaryUrl)
-  }
-  else {
+  $linkResult = Add-DataDictionaryLink -XmlContent $xmlContent -DictionaryUrl $dictionaryUrl
+  if (-not $linkResult.Inserted) {
     Write-Warning "Nao encontrei <gmd:URL/> vazio nem placeholder do segundo link; importando sem inserir link do dicionario de dados."
     if ($updatedTypeCount -eq 0) {
       return $XmlPath
     }
 
-    $tempXml = Join-Path ([IO.Path]::GetTempPath()) ("metadata_with_data_dictionary_{0}.xml" -f ([guid]::NewGuid()))
-    $utf8NoBom = New-Object Text.UTF8Encoding $false
-    [IO.File]::WriteAllText($tempXml, $xmlContent, $utf8NoBom)
+    $tempXml = Write-TemporaryMetadataXml -XmlContent $xmlContent
     Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
     return $tempXml
   }
 
-  $tempXml = Join-Path ([IO.Path]::GetTempPath()) ("metadata_with_data_dictionary_{0}.xml" -f ([guid]::NewGuid()))
-  $utf8NoBom = New-Object Text.UTF8Encoding $false
-  [IO.File]::WriteAllText($tempXml, $updatedContent, $utf8NoBom)
+  $tempXml = Write-TemporaryMetadataXml -XmlContent $linkResult.Content
   Write-Host "Link do dicionario de dados inserido no XML temporario:"
   Write-Host "  $dictionaryUrl"
   if ($updatedTypeCount -gt 0) {
