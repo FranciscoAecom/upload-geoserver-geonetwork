@@ -3,6 +3,8 @@ $scriptPaths = @(
   (Get-Item .\upload_iocasta_qas.ps1).FullName
 ) + @(
   Get-ChildItem -LiteralPath .\src -Filter *.ps1 -File | Sort-Object Name | ForEach-Object { $_.FullName }
+) + @(
+  Get-ChildItem -LiteralPath .\tests -Filter *.ps1 -File | Sort-Object Name | ForEach-Object { $_.FullName }
 )
 
 foreach ($scriptPath in $scriptPaths) {

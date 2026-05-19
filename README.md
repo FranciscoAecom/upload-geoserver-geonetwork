@@ -141,8 +141,24 @@ Layer: rst_imb_lulc_20110101
 - `src/GeoServer.ps1`: leitura de tipos de atributos publicados no GeoServer.
 - `src/GeoNetwork.ps1`: validacao das respostas de importacao do GeoNetwork.
 - `src/Metadata.ps1`: leitura e ajuste do XML de metadados.
+- `src/PublishContext.ps1`: consolidacao dos nomes, arquivos, tipo de dado, endpoint e titulos usados no fluxo.
 - `src/Sld.ps1`: ajuste temporario do SLD antes do upload.
+- `tests/Run-UnitTests.ps1`: testes locais das funcoes puras do fluxo.
 - `.validate_parse_upload.ps1`: validacao sintatica dos scripts PowerShell.
+
+## Validacao local
+
+Para validar a sintaxe dos scripts:
+
+```powershell
+.\.validate_parse_upload.ps1
+```
+
+Para executar os testes locais:
+
+```powershell
+.\tests\Run-UnitTests.ps1
+```
 
 ## Observacoes
 
