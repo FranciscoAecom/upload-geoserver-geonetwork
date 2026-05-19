@@ -14,8 +14,6 @@ O fluxo principal esta em `upload_iocasta_qas.ps1`. Ele localiza um arquivo de d
   - 1 arquivo `.sld`
   - 1 arquivo `.xml`
 
-Para os scripts auxiliares de figuras em `tools/`, tambem e necessario ter QGIS/GDAL instalado no caminho esperado pelos scripts.
-
 ## Comando para subir as bases
 
 Para subir uma base APP CAR, abra o terminal PowerShell, entre na pasta do repositorio e execute:
@@ -130,25 +128,16 @@ Layer: rst_imb_lulc_20110101
 6. Insere, quando possivel, o link do dicionario de dados no XML temporario.
 7. Importa os metadados no GeoNetwork, tentando primeiro a API moderna e depois endpoints legados.
 
-## Scripts auxiliares
+## Estrutura do projeto
 
-### `tools/create_app_car_figures.ps1`
-
-Gera imagens PNG no padrao de legenda do GeoServer para todos os estados.
-
-```powershell
-.\tools\create_app_car_figures.ps1 -OutputFolder "C:\Temp\figuras_app_car_geoserver"
-```
-
-### `tools/create_app_car_state_maps.ps1`
-
-Gera miniaturas/mapas PNG por UF a partir dos GeoPackages APP CAR. O script usa ferramentas GDAL do QGIS e caminhos locais/rede configurados no proprio arquivo.
-
-```powershell
-.\tools\create_app_car_state_maps.ps1 `
-  -OutputFolder "C:\Temp\figuras_app_car_mapas" `
-  -States ba,sp,mg
-```
+- `upload_iocasta_qas.ps1`: script de entrada e orquestracao do fluxo.
+- `src/Core.ps1`: validacoes locais, credenciais, escaping e execucao de `curl.exe`.
+- `src/Naming.ps1`: regras de nomes e titulos amigaveis de camadas.
+- `src/GeoServer.ps1`: leitura de tipos de atributos publicados no GeoServer.
+- `src/GeoNetwork.ps1`: validacao das respostas de importacao do GeoNetwork.
+- `src/Metadata.ps1`: leitura e ajuste do XML de metadados.
+- `src/Sld.ps1`: ajuste temporario do SLD antes do upload.
+- `.validate_parse_upload.ps1`: validacao sintatica dos scripts PowerShell.
 
 ## Observacoes
 
