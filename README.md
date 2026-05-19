@@ -23,6 +23,7 @@ cd "C:\Temp\Repositórios\upload-geoserver-geonetwork"
 
 .\upload_iocasta_qas.ps1 `
   -Folder "C:\Users\RibeiroF\Downloads\app_car_ba\SICAR\20260301\00" `
+  -Environment qas `
   -Workspace "gold" `
   -SameCredentialForCatalog
 ```
@@ -115,6 +116,33 @@ Layer: rst_imb_lulc_20110101
 | `CatalogGroup` | `2` | Grupo usado na importacao do GeoNetwork. |
 | `CatalogCategory` | `2` | Categoria usada na importacao do GeoNetwork. |
 | `DataDictionaryBaseUrl` | endpoint QAS | Base para inserir link do dicionario de dados no XML. |
+| `Environment` | `qas` | Nome do ambiente carregado de `config/<ambiente>.psd1`. |
+| `ConfigPath` | vazio | Caminho opcional para um arquivo `.psd1` especifico. |
+
+## Configuracao por ambiente
+
+As URLs e valores de ambiente ficam em arquivos `.psd1` na pasta `config/`.
+Por padrao, o script carrega `config/qas.psd1`.
+
+```powershell
+.\upload_iocasta_qas.ps1 `
+  -Folder "C:\Users\RibeiroF\Downloads\app_car_ba\SICAR\20260301\00" `
+  -Environment qas `
+  -SameCredentialForCatalog
+```
+
+Tambem e possivel informar um arquivo diretamente:
+
+```powershell
+.\upload_iocasta_qas.ps1 `
+  -Folder "C:\Users\RibeiroF\Downloads\app_car_ba\SICAR\20260301\00" `
+  -ConfigPath ".\config\qas.psd1" `
+  -SameCredentialForCatalog
+```
+
+Parametros passados na linha de comando sobrescrevem o arquivo de configuracao.
+Por exemplo, `-Workspace silver` usa o restante do ambiente escolhido, mas publica
+no workspace informado.
 
 ## Opcoes de controle
 
@@ -122,6 +150,17 @@ Layer: rst_imb_lulc_20110101
 - `-SkipGeoServer`: ignora as etapas do GeoServer.
 - `-SkipGeoPackage`: nao faz upload do arquivo de dados, mas continua ajustando titulo/estilo.
 - `-SkipCatalog`: ignora a importacao no GeoNetwork.
+- `-DryRun`: mostra os comandos `curl.exe` que seriam executados, sem pedir credenciais e sem publicar nada.
+
+Exemplo para conferir a publicacao antes de executar de verdade:
+
+```powershell
+.\upload_iocasta_qas.ps1 `
+  -Folder "C:\Users\RibeiroF\Downloads\app_car_ba\SICAR\20260301\00" `
+  -Workspace "gold" `
+  -SameCredentialForCatalog `
+  -DryRun
+```
 
 ## Fluxo executado
 
@@ -137,12 +176,16 @@ Layer: rst_imb_lulc_20110101
 
 - `upload_iocasta_qas.ps1`: script de entrada e orquestracao do fluxo.
 - `src/Core.ps1`: validacoes locais, credenciais, escaping e execucao de `curl.exe`.
+- `src/Config.ps1`: carregamento dos arquivos `config/*.psd1` e aplicacao de overrides.
 - `src/Naming.ps1`: regras de nomes e titulos amigaveis de camadas.
 - `src/GeoServer.ps1`: leitura de tipos de atributos publicados no GeoServer.
 - `src/GeoNetwork.ps1`: validacao das respostas de importacao do GeoNetwork.
 - `src/Metadata.ps1`: leitura e ajuste do XML de metadados.
 - `src/PublishContext.ps1`: consolidacao dos nomes, arquivos, tipo de dado, endpoint e titulos usados no fluxo.
 - `src/Sld.ps1`: ajuste temporario do SLD antes do upload.
+- `src/Urls.ps1`: montagem centralizada dos endpoints GeoServer e GeoNetwork.
+- `config/qas.psd1`: configuracao padrao do ambiente QAS.
+- `config/prod.psd1.example`: exemplo de configuracao para producao.
 - `tests/Run-UnitTests.ps1`: testes locais das funcoes puras do fluxo.
 - `.validate_parse_upload.ps1`: validacao sintatica dos scripts PowerShell.
 

@@ -23,7 +23,7 @@ function Get-GeoServerAttributeTypes {
   )
 
   $attributeTypes = @{}
-  $featureTypeUrl = "$GeoServer/rest/workspaces/$Workspace/datastores/$Store/featuretypes/$Layer.json"
+  $featureTypeUrl = Get-GeoServerFeatureTypeUrl -GeoServer $GeoServer -Workspace $Workspace -Store $Store -Layer $Layer
 
   try {
     $featureTypeJson = Invoke-CurlCapture -Arguments @(
@@ -72,7 +72,8 @@ function Publish-GeoServerData {
     [string]$DataContentType,
     [string]$DataPath,
     [string]$DataLabel,
-    [string]$GeoAuth
+    [string]$GeoAuth,
+    [bool]$DryRun = $false
   )
 
   Write-Host ""
@@ -89,8 +90,8 @@ function Publish-GeoServerData {
     "--header", "Authorization: Basic $GeoAuth",
     "--header", "Content-Type: $DataContentType",
     "--upload-file", $DataPath,
-    "$GeoServer/rest/workspaces/$Workspace/$DataEndpoint/$Store/file.${DataType}?configure=all"
-  )
+    (Get-GeoServerDataUploadUrl -GeoServer $GeoServer -Workspace $Workspace -DataEndpoint $DataEndpoint -Store $Store -DataType $DataType)
+  ) -DryRun $DryRun
 }
 
 function Set-GeoServerLayerTitle {
@@ -102,7 +103,8 @@ function Set-GeoServerLayerTitle {
     [string]$DataEndpoint,
     [string]$LayerResource,
     [string]$LayerTitle,
-    [string]$GeoAuth
+    [string]$GeoAuth,
+    [bool]$DryRun = $false
   )
 
   Write-Host ""
@@ -143,8 +145,8 @@ function Set-GeoServerLayerTitle {
         "--header", "Authorization: Basic $GeoAuth",
         "--header", "Content-Type: application/xml; charset=UTF-8",
         "--data-binary", "@$($tmpFeatureTypeBody.FullName)",
-        "$GeoServer/rest/workspaces/$Workspace/$DataEndpoint/$Store/$LayerResource/$Layer"
-      )
+        (Get-GeoServerLayerResourceUrl -GeoServer $GeoServer -Workspace $Workspace -DataEndpoint $DataEndpoint -Store $Store -LayerResource $LayerResource -Layer $Layer)
+      ) -DryRun $DryRun
     }
     catch {
       Write-Warning "Nao foi possivel ajustar o titulo automaticamente. O script vai continuar. Detalhe: $($_.Exception.Message)"
@@ -162,7 +164,8 @@ function Publish-GeoServerStyle {
     [string]$Style,
     [string]$Layer,
     [string]$SldPath,
-    [string]$GeoAuth
+    [string]$GeoAuth,
+    [bool]$DryRun = $false
   )
 
   Write-Host ""
@@ -181,8 +184,8 @@ function Publish-GeoServerStyle {
       "--header", "Authorization: Basic $GeoAuth",
       "--header", "Content-Type: application/vnd.ogc.sld+xml",
       "--data-binary", "@$sldUploadPath",
-      "$GeoServer/rest/workspaces/$Workspace/styles?name=${Style}&raw=true"
-    )
+      (Get-GeoServerStyleCollectionUrl -GeoServer $GeoServer -Workspace $Workspace -Style $Style)
+    ) -DryRun $DryRun
   }
   catch {
     Write-Warning "Nao foi possivel criar o estilo; tentando atualizar estilo existente. Detalhe: $($_.Exception.Message)"
@@ -198,8 +201,8 @@ function Publish-GeoServerStyle {
       "--header", "Authorization: Basic $GeoAuth",
       "--header", "Content-Type: application/vnd.ogc.sld+xml",
       "--data-binary", "@$sldUploadPath",
-      "$GeoServer/rest/workspaces/$Workspace/styles/${Style}?raw=true"
-    )
+      (Get-GeoServerStyleUrl -GeoServer $GeoServer -Workspace $Workspace -Style $Style)
+    ) -DryRun $DryRun
   }
   finally {
     Remove-Item -LiteralPath $sldUploadPath -Force -ErrorAction SilentlyContinue
@@ -212,7 +215,8 @@ function Set-GeoServerDefaultStyle {
     [string]$Workspace,
     [string]$Layer,
     [string]$Style,
-    [string]$GeoAuth
+    [string]$GeoAuth,
+    [bool]$DryRun = $false
   )
 
   Write-Host ""
@@ -242,8 +246,8 @@ function Set-GeoServerDefaultStyle {
       "--header", "Authorization: Basic $GeoAuth",
       "--header", "Content-Type: application/json",
       "--data-binary", "@$($tmpBody.FullName)",
-      "$GeoServer/rest/layers/$Workspace`:$Layer"
-    )
+      (Get-GeoServerLayerUrl -GeoServer $GeoServer -Workspace $Workspace -Layer $Layer)
+    ) -DryRun $DryRun
   }
   finally {
     Remove-Item -LiteralPath $tmpBody.FullName -Force -ErrorAction SilentlyContinue
@@ -255,26 +259,35 @@ function Invoke-GeoServerPublish {
     [string]$GeoServer,
     [string]$Workspace,
     [pscustomobject]$PublishContext,
-    [bool]$SkipGeoPackage
+    [bool]$SkipGeoPackage,
+    [bool]$DryRun = $false
   )
 
-  $geoCredential = Get-Credential -Message "Credenciais do GeoServer QAS"
-  $geoAuth = ConvertTo-BasicAuth -Credential $geoCredential
+  $geoCredential = $null
+  $geoAuth = "DRYRUN"
+  if ($DryRun) {
+    Write-Host ""
+    Write-Host "DRY-RUN: credenciais do GeoServer nao solicitadas."
+  }
+  else {
+    $geoCredential = Get-Credential -Message "Credenciais do GeoServer QAS"
+    $geoAuth = ConvertTo-BasicAuth -Credential $geoCredential
+  }
 
   if ($SkipGeoPackage) {
     Write-Host ""
     Write-Host "1/5 - Upload de dados ignorado por parametro -SkipGeoPackage."
   }
   else {
-    Publish-GeoServerData -GeoServer $GeoServer -Workspace $Workspace -Store $PublishContext.Store -DataEndpoint $PublishContext.DataEndpoint -DataType $PublishContext.DataType -DataContentType $PublishContext.DataContentType -DataPath $PublishContext.DataPath -DataLabel $PublishContext.DataLabel -GeoAuth $geoAuth
+    Publish-GeoServerData -GeoServer $GeoServer -Workspace $Workspace -Store $PublishContext.Store -DataEndpoint $PublishContext.DataEndpoint -DataType $PublishContext.DataType -DataContentType $PublishContext.DataContentType -DataPath $PublishContext.DataPath -DataLabel $PublishContext.DataLabel -GeoAuth $geoAuth -DryRun $DryRun
   }
 
-  Set-GeoServerLayerTitle -GeoServer $GeoServer -Workspace $Workspace -Store $PublishContext.Store -Layer $PublishContext.Layer -DataEndpoint $PublishContext.DataEndpoint -LayerResource $PublishContext.LayerResource -LayerTitle $PublishContext.GeoServerLayerTitle -GeoAuth $geoAuth
-  Publish-GeoServerStyle -GeoServer $GeoServer -Workspace $Workspace -Style $PublishContext.Style -Layer $PublishContext.Layer -SldPath $PublishContext.SldPath -GeoAuth $geoAuth
-  Set-GeoServerDefaultStyle -GeoServer $GeoServer -Workspace $Workspace -Layer $PublishContext.Layer -Style $PublishContext.Style -GeoAuth $geoAuth
+  Set-GeoServerLayerTitle -GeoServer $GeoServer -Workspace $Workspace -Store $PublishContext.Store -Layer $PublishContext.Layer -DataEndpoint $PublishContext.DataEndpoint -LayerResource $PublishContext.LayerResource -LayerTitle $PublishContext.GeoServerLayerTitle -GeoAuth $geoAuth -DryRun $DryRun
+  Publish-GeoServerStyle -GeoServer $GeoServer -Workspace $Workspace -Style $PublishContext.Style -Layer $PublishContext.Layer -SldPath $PublishContext.SldPath -GeoAuth $geoAuth -DryRun $DryRun
+  Set-GeoServerDefaultStyle -GeoServer $GeoServer -Workspace $Workspace -Layer $PublishContext.Layer -Style $PublishContext.Style -GeoAuth $geoAuth -DryRun $DryRun
 
   $geoServerAttributeTypes = @{}
-  if ($PublishContext.LayerResource -eq 'featuretypes') {
+  if ($PublishContext.LayerResource -eq 'featuretypes' -and -not $DryRun) {
     Write-Host ""
     Write-Host "Coletando tipos dos atributos publicados no GeoServer..."
     $geoServerAttributeTypes = Get-GeoServerAttributeTypes -GeoServer $GeoServer -Workspace $Workspace -Store $PublishContext.Store -Layer $PublishContext.Layer -GeoAuth $geoAuth

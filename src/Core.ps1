@@ -152,7 +152,10 @@ function ConvertTo-AsciiText {
 }
 
 function Invoke-Curl {
-  param([string[]]$Arguments)
+  param(
+    [string[]]$Arguments,
+    [bool]$DryRun = $false
+  )
 
   $displayArguments = foreach ($argument in $Arguments) {
     if ($argument -like "Authorization: Basic *") {
@@ -165,6 +168,11 @@ function Invoke-Curl {
 
   Write-Host ""
   Write-Host "curl.exe $($displayArguments -join ' ')"
+  if ($DryRun) {
+    Write-Host "DRY-RUN: curl.exe nao executado."
+    return
+  }
+
   & curl.exe @Arguments
   if ($LASTEXITCODE -ne 0) {
     throw "curl.exe falhou com exit code $LASTEXITCODE."
@@ -172,7 +180,11 @@ function Invoke-Curl {
 }
 
 function Invoke-CurlCapture {
-  param([string[]]$Arguments)
+  param(
+    [string[]]$Arguments,
+    [bool]$DryRun = $false,
+    [string]$DryRunOutput = "{}"
+  )
 
   $displayArguments = foreach ($argument in $Arguments) {
     if ($argument -like "Authorization: Basic *") {
@@ -188,6 +200,11 @@ function Invoke-CurlCapture {
 
   Write-Host ""
   Write-Host "curl.exe $($displayArguments -join ' ')"
+  if ($DryRun) {
+    Write-Host "DRY-RUN: curl.exe nao executado."
+    return $DryRunOutput
+  }
+
   $output = & curl.exe @Arguments
   if ($LASTEXITCODE -ne 0) {
     $body = ($output -join "`n")

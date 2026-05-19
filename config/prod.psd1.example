@@ -1,0 +1,8 @@
+@{
+  GeoServer = 'https://gis.iocasta.com.br/geoserver'
+  Catalog = 'https://catalog.iocasta.com.br'
+  Workspace = 'gold'
+  CatalogGroup = '2'
+  CatalogCategory = '2'
+  DataDictionaryBaseUrl = 'https://etlapi.iocasta.com.br/get_geonetwork_data_dict'
+}

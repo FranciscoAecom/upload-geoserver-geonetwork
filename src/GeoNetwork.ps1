@@ -95,25 +95,33 @@ function Import-GeoNetworkMetadata {
     [string]$CatalogGroup,
     [string]$CatalogCategory,
     [pscredential]$GeoCredential,
-    [bool]$SameCredentialForCatalog
+    [bool]$SameCredentialForCatalog,
+    [bool]$DryRun = $false
   )
 
   Write-Host ""
   Write-Host "5/5 - Importando XML no catalogo GeoNetwork..."
   Write-Host "Abrindo sessao e capturando token XSRF do GeoNetwork..."
   $metadataUploadPath = New-MetadataXmlWithDataDictionaryLink -XmlPath $XmlPath -DataDictionaryBaseUrl $DataDictionaryBaseUrl -AttributeTypes $AttributeTypes
-  if ($SameCredentialForCatalog) {
-    if ($null -eq $GeoCredential) {
-      $catalogCredential = Get-Credential -Message "Credenciais do Catalogo QAS / GeoNetwork"
-    }
-    else {
-      $catalogCredential = $GeoCredential
-    }
+  $catalogCredential = $null
+  $catalogAuth = "DRYRUN"
+  if ($DryRun) {
+    Write-Host "DRY-RUN: credenciais do Catalogo/GeoNetwork nao solicitadas."
   }
   else {
-    $catalogCredential = Get-Credential -Message "Credenciais do Catalogo QAS / GeoNetwork"
+    if ($SameCredentialForCatalog) {
+      if ($null -eq $GeoCredential) {
+        $catalogCredential = Get-Credential -Message "Credenciais do Catalogo QAS / GeoNetwork"
+      }
+      else {
+        $catalogCredential = $GeoCredential
+      }
+    }
+    else {
+      $catalogCredential = Get-Credential -Message "Credenciais do Catalogo QAS / GeoNetwork"
+    }
+    $catalogAuth = ConvertTo-BasicAuth -Credential $catalogCredential
   }
-  $catalogAuth = ConvertTo-BasicAuth -Credential $catalogCredential
   $cookieJar = New-TemporaryFile
 
   try {
@@ -127,31 +135,20 @@ function Import-GeoNetworkMetadata {
       "--cookie", $cookieJar.FullName,
       "--header", "Authorization: Basic $catalogAuth",
       "--header", "Accept: application/json",
-      "$Catalog/srv/api/me"
-    )
+      (Get-GeoNetworkMeUrl -Catalog $Catalog)
+    ) -DryRun $DryRun
 
-    $xsrfToken = Get-CookieValue -CookieJar $cookieJar.FullName -CookieName "XSRF-TOKEN"
+    if ($DryRun) {
+      $xsrfToken = "DRYRUN-XSRF-TOKEN"
+    }
+    else {
+      $xsrfToken = Get-CookieValue -CookieJar $cookieJar.FullName -CookieName "XSRF-TOKEN"
+    }
     if ([string]::IsNullOrWhiteSpace($xsrfToken)) {
-      throw "Nao foi possivel obter XSRF-TOKEN do GeoNetwork em $Catalog/srv/api/me."
+      throw "Nao foi possivel obter XSRF-TOKEN do GeoNetwork em $(Get-GeoNetworkMeUrl -Catalog $Catalog)."
     }
 
-    $recordsImportQuery = @(
-      "metadataType=METADATA",
-      "uuidProcessing=OVERWRITE",
-      "group=$CatalogGroup",
-      "category=$CatalogCategory",
-      "rejectIfInvalid=false",
-      "publishToAll=true",
-      "transformWith=_none_",
-      "schema=iso19139",
-      "allowEditGroupMembers=true"
-    ) -join "&"
-    $recordsImportUrls = @(
-      "$Catalog/srv/api/records?$recordsImportQuery",
-      "$Catalog/srv/api/records/?$recordsImportQuery",
-      "$Catalog/srv/por/api/records?$recordsImportQuery",
-      "$Catalog/srv/por/api/records/?$recordsImportQuery"
-    )
+    $recordsImportUrls = Get-GeoNetworkRecordsImportUrls -Catalog $Catalog -CatalogGroup $CatalogGroup -CatalogCategory $CatalogCategory
 
     try {
       $modernSuccess = $false
@@ -179,7 +176,7 @@ function Import-GeoNetworkMetadata {
             "--header", "Accept: application/json",
             "--form", "file=@$metadataUploadPath;type=application/xml",
             $recordsImportUrl
-          )
+          ) -DryRun $DryRun -DryRunOutput '{"success":true}'
           Assert-GeoNetworkModernImportSucceeded -Output $modernOutput
           $modernSuccess = $true
         }
@@ -195,11 +192,7 @@ function Import-GeoNetworkMetadata {
     }
     catch {
       Write-Warning "Importacao pela API moderna falhou; tentando endpoints legados. Detalhe: $($_.Exception.Message)"
-      $legacyEndpoints = @(
-        "$Catalog/srv/por/metadata.insert",
-        "$Catalog/srv/por/xml.metadata.insert",
-        "$Catalog/srv/api/0.1/records"
-      )
+      $legacyEndpoints = Get-GeoNetworkLegacyImportUrls -Catalog $Catalog
 
       $legacySuccess = $false
       $legacyErrors = @()
@@ -230,7 +223,7 @@ function Import-GeoNetworkMetadata {
             "--form", "isTemplate=n",
             "--form", "validate=off",
             $legacyEndpoint
-          )
+          ) -DryRun $DryRun
           $legacySuccess = $true
         }
         catch {

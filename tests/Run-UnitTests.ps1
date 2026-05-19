@@ -2,9 +2,11 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $repoRoot "src\Core.ps1")
+. (Join-Path $repoRoot "src\Config.ps1")
 . (Join-Path $repoRoot "src\Naming.ps1")
 . (Join-Path $repoRoot "src\Metadata.ps1")
 . (Join-Path $repoRoot "src\PublishContext.ps1")
+. (Join-Path $repoRoot "src\Urls.ps1")
 . (Join-Path $repoRoot "src\GeoNetwork.ps1")
 
 $script:testCount = 0
@@ -97,6 +99,23 @@ try {
   Assert-Equal (Get-AppCarLayerTitle -LayerName "pol_pcd_app_car_ba_20260301") $expectedAppCarTitle "Deve montar titulo APP CAR"
   Assert-Equal (Get-ImbLulcLayerTitle -LayerName "rst_imb_lulc_20110101") $expectedImbLulcTitle "Deve montar titulo IMB LULC com colecao"
 
+  $configPath = Join-Path $tempRoot "test.psd1"
+  Set-Content -LiteralPath $configPath -Value @"
+@{
+  GeoServer = 'https://gis-test/geoserver'
+  Catalog = 'https://catalog-test'
+  Workspace = 'silver'
+  CatalogGroup = '9'
+  CatalogCategory = '8'
+  DataDictionaryBaseUrl = 'https://etl-test/get_geonetwork_data_dict'
+}
+"@ -Encoding UTF8
+  $config = Import-PublishConfig -ScriptRoot $repoRoot -Environment "test" -ConfigPath $configPath
+  Assert-Equal $config.GeoServer "https://gis-test/geoserver" "Deve carregar GeoServer do config"
+  Assert-Equal $config.Workspace "silver" "Deve carregar Workspace do config"
+  Assert-Equal (Get-ConfigValue -Config $config -BoundParameters @{} -Name "CatalogGroup" -CurrentValue "2") "9" "Config deve preencher parametro nao informado"
+  Assert-Equal (Get-ConfigValue -Config $config -BoundParameters @{ CatalogGroup = "2" } -Name "CatalogGroup" -CurrentValue "2") "2" "Parametro informado deve sobrescrever config"
+
   $inputFolder = Join-Path $tempRoot "input"
   New-Item -ItemType Directory -Path $inputFolder | Out-Null
   $dataPath = Join-Path $inputFolder "pol_pcd_app_car_ba_20260301.gpkg"
@@ -129,6 +148,14 @@ try {
   Assert-Equal $context.Style "style" "Contexto deve derivar estilo do SLD"
   Assert-Equal $context.LayerTitle "Titulo Teste" "Contexto deve usar titulo do XML"
   Assert-Equal $context.GeoServerLayerTitle $expectedAppCarTitle "Contexto deve usar titulo amigavel no GeoServer"
+
+  Assert-Equal (Join-UrlPath -BaseUrl "https://server/base/" -Segments @("/a/", "b")) "https://server/base/a/b" "Deve juntar segmentos de URL sem duplicar barras"
+  Assert-Equal (Get-GeoServerDataUploadUrl -GeoServer "https://gis/geoserver" -Workspace "gold" -DataEndpoint "datastores" -Store "store1" -DataType "gpkg") "https://gis/geoserver/rest/workspaces/gold/datastores/store1/file.gpkg?configure=all" "Deve montar URL de upload GeoServer"
+  Assert-Equal (Get-GeoServerLayerJsonUrl -GeoServer "https://gis/geoserver" -Workspace "gold" -Layer "layer1") "https://gis/geoserver/rest/layers/gold:layer1.json" "Deve montar URL JSON da camada"
+  Assert-Equal (Get-GeoNetworkMeUrl -Catalog "https://catalog") "https://catalog/srv/api/me" "Deve montar URL /me do GeoNetwork"
+  $recordsImportUrls = Get-GeoNetworkRecordsImportUrls -Catalog "https://catalog" -CatalogGroup "2" -CatalogCategory "3"
+  Assert-Equal $recordsImportUrls[0] "https://catalog/srv/api/records?metadataType=METADATA&uuidProcessing=OVERWRITE&group=2&category=3&rejectIfInvalid=false&publishToAll=true&transformWith=_none_&schema=iso19139&allowEditGroupMembers=true" "Deve montar URL moderna de importacao"
+  Assert-Equal $recordsImportUrls[1] "https://catalog/srv/api/records/?metadataType=METADATA&uuidProcessing=OVERWRITE&group=2&category=3&rejectIfInvalid=false&publishToAll=true&transformWith=_none_&schema=iso19139&allowEditGroupMembers=true" "Deve manter variante moderna com barra final"
 
   $dictionaryXml = @"
 <root>
