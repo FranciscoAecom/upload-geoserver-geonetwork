@@ -24,9 +24,16 @@ cd "C:\Temp\Repositórios\upload-geoserver-geonetwork"
 .\upload_iocasta_qas.ps1 `
   -Folder "C:\Users\RibeiroF\Downloads\app_car_ba\SICAR\20260301\00" `
   -Workspace "gold" `
-  -Store "pol_pcd_app_car_ba_20260301" `
-  -Layer "pol_pcd_app_car_ba_20260301" `
   -SameCredentialForCatalog
+```
+
+O nome da camada e do store e definido automaticamente a partir do nome do arquivo
+de dados, sem a extensao. Por exemplo, se a pasta contem
+`pol_pcd_app_car_ba_20260301.gpkg`, o script usa:
+
+```text
+Store: pol_pcd_app_car_ba_20260301
+Layer: pol_pcd_app_car_ba_20260301
 ```
 
 Durante a execucao, o script solicita as credenciais via `Get-Credential`. As credenciais nao devem ser salvas no repositorio.
@@ -38,13 +45,9 @@ $data = "20260301"
 $ufs = @("ac", "al", "am", "ap", "ba", "ce", "df", "es", "go", "ma", "mg", "ms", "mt", "pa", "pb", "pe", "pi", "pr", "rj", "rn", "ro", "rr", "rs", "sc", "se", "sp", "to")
 
 foreach ($uf in $ufs) {
-  $layer = "pol_pcd_app_car_${uf}_$data"
-
   .\upload_iocasta_qas.ps1 `
     -Folder "C:\Users\RibeiroF\Downloads\app_car_$uf\SICAR\$data\00" `
     -Workspace "gold" `
-    -Store $layer `
-    -Layer $layer `
     -SameCredentialForCatalog
 }
 ```
@@ -77,6 +80,8 @@ Uso e cobertura da terra de 2011 - Colecao 10
 Se `Store` e `Layer` nao forem informados, o script usa automaticamente o nome do
 arquivo de dados (`.gpkg`, `.rst` ou `.tif`) sem a extensao. Por isso, para esse
 fluxo automatico funcionar, o arquivo de dados deve seguir a convencao de nome.
+Informe `Store` ou `Layer` apenas quando precisar publicar com um nome diferente
+do arquivo de dados.
 
 Exemplo:
 
@@ -103,8 +108,8 @@ Layer: rst_imb_lulc_20110101
 | `GeoServer` | `https://gisqas.iocasta.com.br/geoserver` | URL base do GeoServer. |
 | `Catalog` | `https://catalogqas.iocasta.com.br` | URL base do GeoNetwork. |
 | `Workspace` | `gold` | Workspace de destino no GeoServer. |
-| `Store` | nome do arquivo de dados | Nome do datastore/coveragestore no GeoServer. Se omitido, usa o nome do arquivo de dados sem extensao. |
-| `Layer` | nome do arquivo de dados | Nome da camada publicada. Se omitido, usa o nome do arquivo de dados sem extensao. |
+| `Store` | nome do arquivo de dados | Nome opcional do datastore/coveragestore no GeoServer. Use apenas quando precisar sobrescrever o nome derivado do arquivo. |
+| `Layer` | nome do arquivo de dados | Nome opcional da camada publicada. Use apenas quando precisar sobrescrever o nome derivado do arquivo. |
 | `LayerTitle` | extraido do XML | Titulo usado no catalogo quando informado ou detectado. |
 | `Style` | nome do arquivo SLD | Nome do estilo no GeoServer. |
 | `CatalogGroup` | `2` | Grupo usado na importacao do GeoNetwork. |
@@ -143,4 +148,4 @@ Layer: rst_imb_lulc_20110101
 
 - O script imprime os comandos `curl.exe`, mascarando headers sensiveis como `Authorization` e `X-XSRF-TOKEN`.
 - Arquivos temporarios sao criados durante a execucao e removidos ao final.
-- Antes de executar para outro ambiente, revise `GeoServer`, `Catalog`, `Workspace`, `Store`, `Layer`, `CatalogGroup` e `CatalogCategory`.
+- Antes de executar para outro ambiente, revise `GeoServer`, `Catalog`, `Workspace`, `CatalogGroup` e `CatalogCategory`. Use `Store` e `Layer` somente quando o nome publicado precisar ser diferente do arquivo de dados.
