@@ -151,48 +151,18 @@ function ConvertTo-AsciiText {
   return $builder.ToString().Normalize([Text.NormalizationForm]::FormC)
 }
 
-function Invoke-Curl {
-  param(
-    [string[]]$Arguments,
-    [bool]$DryRun = $false
-  )
+function Add-CurlNoRevokeArgument {
+  param([string[]]$Arguments)
 
-  if ($script:SkipCurlCertificateRevocationCheck -and $Arguments -notcontains "--ssl-no-revoke") {
-    $Arguments = @("--ssl-no-revoke") + $Arguments
+  if ($Arguments -contains "--ssl-no-revoke") {
+    return $Arguments
   }
 
-  $displayArguments = foreach ($argument in $Arguments) {
-    if ($argument -like "Authorization: Basic *") {
-      "Authorization: Basic ***"
-    }
-    else {
-      $argument
-    }
-  }
-
-  Write-Host ""
-  Write-Host "curl.exe $($displayArguments -join ' ')"
-  if ($DryRun) {
-    Write-Host "DRY-RUN: curl.exe nao executado."
-    return
-  }
-
-  & curl.exe @Arguments
-  if ($LASTEXITCODE -ne 0) {
-    throw "curl.exe falhou com exit code $LASTEXITCODE."
-  }
+  return @("--ssl-no-revoke") + $Arguments
 }
 
-function Invoke-CurlCapture {
-  param(
-    [string[]]$Arguments,
-    [bool]$DryRun = $false,
-    [string]$DryRunOutput = "{}"
-  )
-
-  if ($script:SkipCurlCertificateRevocationCheck -and $Arguments -notcontains "--ssl-no-revoke") {
-    $Arguments = @("--ssl-no-revoke") + $Arguments
-  }
+function Get-CurlDisplayArguments {
+  param([string[]]$Arguments)
 
   $displayArguments = foreach ($argument in $Arguments) {
     if ($argument -like "Authorization: Basic *") {
@@ -206,6 +176,56 @@ function Invoke-CurlCapture {
     }
   }
 
+  return $displayArguments
+}
+
+function Invoke-Curl {
+  param(
+    [string[]]$Arguments,
+    [bool]$DryRun = $false
+  )
+
+  if ($script:SkipCurlCertificateRevocationCheck) {
+    $Arguments = Add-CurlNoRevokeArgument -Arguments $Arguments
+  }
+
+  $displayArguments = Get-CurlDisplayArguments -Arguments $Arguments
+
+  Write-Host ""
+  Write-Host "curl.exe $($displayArguments -join ' ')"
+  if ($DryRun) {
+    Write-Host "DRY-RUN: curl.exe nao executado."
+    return
+  }
+
+  & curl.exe @Arguments
+  if ($LASTEXITCODE -eq 35 -and $Arguments -notcontains "--ssl-no-revoke") {
+    Write-Warning "curl.exe falhou com erro TLS/Schannel 35; tentando novamente com --ssl-no-revoke."
+    $Arguments = Add-CurlNoRevokeArgument -Arguments $Arguments
+    $displayArguments = Get-CurlDisplayArguments -Arguments $Arguments
+    Write-Host ""
+    Write-Host "curl.exe $($displayArguments -join ' ')"
+    & curl.exe @Arguments
+  }
+
+  if ($LASTEXITCODE -ne 0) {
+    throw "curl.exe falhou com exit code $LASTEXITCODE."
+  }
+}
+
+function Invoke-CurlCapture {
+  param(
+    [string[]]$Arguments,
+    [bool]$DryRun = $false,
+    [string]$DryRunOutput = "{}"
+  )
+
+  if ($script:SkipCurlCertificateRevocationCheck) {
+    $Arguments = Add-CurlNoRevokeArgument -Arguments $Arguments
+  }
+
+  $displayArguments = Get-CurlDisplayArguments -Arguments $Arguments
+
   Write-Host ""
   Write-Host "curl.exe $($displayArguments -join ' ')"
   if ($DryRun) {
@@ -214,6 +234,15 @@ function Invoke-CurlCapture {
   }
 
   $output = & curl.exe @Arguments
+  if ($LASTEXITCODE -eq 35 -and $Arguments -notcontains "--ssl-no-revoke") {
+    Write-Warning "curl.exe falhou com erro TLS/Schannel 35; tentando novamente com --ssl-no-revoke."
+    $Arguments = Add-CurlNoRevokeArgument -Arguments $Arguments
+    $displayArguments = Get-CurlDisplayArguments -Arguments $Arguments
+    Write-Host ""
+    Write-Host "curl.exe $($displayArguments -join ' ')"
+    $output = & curl.exe @Arguments
+  }
+
   if ($LASTEXITCODE -ne 0) {
     $body = ($output -join "`n")
     if (-not [string]::IsNullOrWhiteSpace($body)) {
