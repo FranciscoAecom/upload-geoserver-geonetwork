@@ -118,6 +118,7 @@ Layer: rst_imb_lulc_20110101
 | `DataDictionaryBaseUrl` | endpoint QAS | Base para inserir link do dicionario de dados no XML. |
 | `Environment` | `qas` | Nome do ambiente carregado de `config/<ambiente>.psd1`. |
 | `ConfigPath` | vazio | Caminho opcional para um arquivo `.psd1` especifico. |
+| `SkipCertificateRevocationCheck` | falso | Adiciona `--ssl-no-revoke` ao `curl.exe` para ambientes Windows/Schannel onde a verificacao de revogacao do certificado falha. |
 
 ## Configuracao por ambiente
 
@@ -150,6 +151,7 @@ no workspace informado.
 - `-SkipGeoServer`: ignora as etapas do GeoServer.
 - `-SkipGeoPackage`: nao faz upload do arquivo de dados, mas continua ajustando titulo/estilo.
 - `-SkipCatalog`: ignora a importacao no GeoNetwork.
+- `-SkipCertificateRevocationCheck`: desativa a verificacao de revogacao de certificado do `curl.exe` (`--ssl-no-revoke`), util quando o Windows retorna `CRYPT_E_NO_REVOCATION_CHECK`.
 - `-DryRun`: mostra os comandos `curl.exe` que seriam executados, sem pedir credenciais e sem publicar nada.
 
 Exemplo para conferir a publicacao antes de executar de verdade:

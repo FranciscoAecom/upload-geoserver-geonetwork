@@ -14,6 +14,7 @@ param(
   [switch]$SkipGeoServer,
   [switch]$SkipGeoPackage,
   [switch]$SkipCatalog,
+  [switch]$SkipCertificateRevocationCheck,
   [switch]$DryRun,
   [string]$Environment = "qas",
   [string]$ConfigPath
@@ -30,6 +31,8 @@ $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptRoot "src\Urls.ps1")
 . (Join-Path $scriptRoot "src\GeoNetwork.ps1")
 . (Join-Path $scriptRoot "src\GeoServer.ps1")
+
+$script:SkipCurlCertificateRevocationCheck = $SkipCertificateRevocationCheck.IsPresent
 
 $config = Import-PublishConfig -ScriptRoot $scriptRoot -Environment $Environment -ConfigPath $ConfigPath
 $GeoServer = Get-ConfigValue -Config $config -BoundParameters $PSBoundParameters -Name "GeoServer" -CurrentValue $GeoServer
@@ -65,6 +68,9 @@ Write-Host "Titulo Catalogo: $($publishContext.LayerTitle)"
 Write-Host "Titulo GeoServer: $($publishContext.GeoServerLayerTitle)"
 if ($DryRun) {
   Write-Host "Modo: DRY-RUN (nenhum curl sera executado)"
+}
+if ($SkipCertificateRevocationCheck) {
+  Write-Host "TLS: verificacao de revogacao de certificado desativada para curl.exe (--ssl-no-revoke)"
 }
 
 $geoCredential = $null

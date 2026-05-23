@@ -157,6 +157,10 @@ function Invoke-Curl {
     [bool]$DryRun = $false
   )
 
+  if ($script:SkipCurlCertificateRevocationCheck -and $Arguments -notcontains "--ssl-no-revoke") {
+    $Arguments = @("--ssl-no-revoke") + $Arguments
+  }
+
   $displayArguments = foreach ($argument in $Arguments) {
     if ($argument -like "Authorization: Basic *") {
       "Authorization: Basic ***"
@@ -185,6 +189,10 @@ function Invoke-CurlCapture {
     [bool]$DryRun = $false,
     [string]$DryRunOutput = "{}"
   )
+
+  if ($script:SkipCurlCertificateRevocationCheck -and $Arguments -notcontains "--ssl-no-revoke") {
+    $Arguments = @("--ssl-no-revoke") + $Arguments
+  }
 
   $displayArguments = foreach ($argument in $Arguments) {
     if ($argument -like "Authorization: Basic *") {
