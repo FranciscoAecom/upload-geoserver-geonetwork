@@ -101,6 +101,20 @@ Store: rst_imb_lulc_20110101
 Layer: rst_imb_lulc_20110101
 ```
 
+Para bases de autos de infracao, o script reconhece o padrao:
+
+```text
+pnt_pcd_enov_AAAAMMDD
+pnt_pcd_enov_bbox_brasil_AAAAMMDD
+```
+
+Esses nomes geram os titulos amigaveis no GeoServer:
+
+```text
+Autos de Infracao
+Autos de Infracao - BBox Brasil
+```
+
 ## Parametros principais
 
 | Parametro | Padrao | Descricao |

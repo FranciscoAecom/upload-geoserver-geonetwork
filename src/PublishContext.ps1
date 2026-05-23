@@ -85,6 +85,9 @@ function Resolve-GeoServerLayerTitle {
   elseif ($Layer -match "^rst_imb_lulc_") {
     $geoServerLayerTitle = Get-ImbLulcLayerTitle -LayerName $Layer
   }
+  elseif ($Layer -match "^pnt_pcd_enov") {
+    $geoServerLayerTitle = Get-AutosInfracaoLayerTitle -LayerName $Layer
+  }
 
   if ([string]::IsNullOrWhiteSpace($geoServerLayerTitle)) {
     $geoServerLayerTitle = $LayerTitle

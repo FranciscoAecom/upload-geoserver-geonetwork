@@ -94,10 +94,14 @@ try {
   $oAcute = [char]0x00F3
   $expectedAppCarTitle = ("{0}rea de Preserva{1}{2}o Permanente - Im{3}veis Bahia" -f $aAcuteUpper, $cCedilla, $aTilde, $oAcute)
   $expectedImbLulcTitle = ("Uso e cobertura da terra de 2011 - Cole{0}{1}o 10" -f $cCedilla, $aTilde)
+  $expectedAutosInfracaoTitle = ("Autos de Infra{0}{1}o" -f $cCedilla, $aTilde)
+  $expectedAutosInfracaoBboxTitle = ("Autos de Infra{0}{1}o - BBox Brasil" -f $cCedilla, $aTilde)
 
   Assert-Equal (Get-StateNameFromLayer -LayerName "pol_pcd_app_car_ba_20260301") "Bahia" "Deve identificar UF pelo nome da camada"
   Assert-Equal (Get-AppCarLayerTitle -LayerName "pol_pcd_app_car_ba_20260301") $expectedAppCarTitle "Deve montar titulo APP CAR"
   Assert-Equal (Get-ImbLulcLayerTitle -LayerName "rst_imb_lulc_20110101") $expectedImbLulcTitle "Deve montar titulo IMB LULC com colecao"
+  Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_20260514") $expectedAutosInfracaoTitle "Deve montar titulo de autos de infracao"
+  Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_bbox_brasil_20260514") $expectedAutosInfracaoBboxTitle "Deve montar titulo de autos de infracao com bbox Brasil"
 
   $configPath = Join-Path $tempRoot "test.psd1"
   Set-Content -LiteralPath $configPath -Value @"
@@ -142,12 +146,30 @@ try {
   Assert-Equal (Get-MetadataTitle -XmlPath $xmlPath) "Titulo Teste" "Deve ler titulo do XML"
   Assert-Equal (Get-MetadataUuid -XmlPath $xmlPath) "uuid-teste" "Deve ler UUID do XML"
 
+  $dictionaryUrl = "https://etlapiqas.iocasta.com.br/get_geonetwork_data_dict?key=uuid-teste"
+  $metadataWithEmptyContactUrlAndPlaceholder = @"
+<root>
+  <contact>
+    <gmd:URL/>
+  </contact>
+  <distribution>
+    <gmd:URL>Estrutura de 2 link associado</gmd:URL>
+  </distribution>
+</root>
+"@
+  $linkResult = Add-DataDictionaryLink -XmlContent $metadataWithEmptyContactUrlAndPlaceholder -DictionaryUrl $dictionaryUrl
+  Assert-True $linkResult.Inserted "Deve inserir link do dicionario quando houver placeholder"
+  Assert-True ($linkResult.Content -like "*<contact>*<gmd:URL/>*</contact>*") "Nao deve usar URL vazia de contato antes do placeholder"
+  Assert-True ($linkResult.Content -like "*<distribution>*<gmd:URL>https://etlapiqas.iocasta.com.br/get_geonetwork_data_dict?key=uuid-teste</gmd:URL>*</distribution>*") "Deve inserir link no placeholder de distribuicao"
+
   $context = New-PublishContext -DataPath $dataPath -SldPath $sldPath -XmlPath $xmlPath
   Assert-Equal $context.Store "pol_pcd_app_car_ba_20260301" "Contexto deve derivar store do arquivo"
   Assert-Equal $context.Layer "pol_pcd_app_car_ba_20260301" "Contexto deve derivar layer do arquivo"
   Assert-Equal $context.Style "style" "Contexto deve derivar estilo do SLD"
   Assert-Equal $context.LayerTitle "Titulo Teste" "Contexto deve usar titulo do XML"
   Assert-Equal $context.GeoServerLayerTitle $expectedAppCarTitle "Contexto deve usar titulo amigavel no GeoServer"
+
+  Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_pcd_enov_20260514" -LayerTitle "Titulo XML") $expectedAutosInfracaoTitle "Contexto deve usar titulo amigavel para autos de infracao"
 
   Assert-Equal (Join-UrlPath -BaseUrl "https://server/base/" -Segments @("/a/", "b")) "https://server/base/a/b" "Deve juntar segmentos de URL sem duplicar barras"
   Assert-Equal (Get-GeoServerDataUploadUrl -GeoServer "https://gis/geoserver" -Workspace "gold" -DataEndpoint "datastores" -Store "store1" -DataType "gpkg") "https://gis/geoserver/rest/workspaces/gold/datastores/store1/file.gpkg?configure=all" "Deve montar URL de upload GeoServer"

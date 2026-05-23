@@ -194,16 +194,16 @@ function Add-DataDictionaryLink {
   )
 
   $escapedDictionaryUrl = ConvertTo-XmlEscapedText -Text $DictionaryUrl
-  if ($XmlContent -match "<gmd:URL\s*/>") {
+  if ($XmlContent -like "*Estrutura de 2 link associado*") {
     return @{
-      Content = [regex]::Replace($XmlContent, "<gmd:URL\s*/>", "<gmd:URL>$escapedDictionaryUrl</gmd:URL>", 1)
+      Content = $XmlContent.Replace("Estrutura de 2 link associado", $escapedDictionaryUrl)
       Inserted = $true
     }
   }
 
-  if ($XmlContent -like "*Estrutura de 2 link associado*") {
+  if ($XmlContent -match "<gmd:URL\s*/>") {
     return @{
-      Content = $XmlContent.Replace("Estrutura de 2 link associado", $escapedDictionaryUrl)
+      Content = [regex]::Replace($XmlContent, "<gmd:URL\s*/>", "<gmd:URL>$escapedDictionaryUrl</gmd:URL>", 1)
       Inserted = $true
     }
   }

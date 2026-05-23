@@ -111,11 +111,30 @@ function Get-ImbLulcLayerTitle {
   return ("Uso e cobertura da terra de {0}" -f $year)
 }
 
+function Get-AutosInfracaoLayerTitle {
+  param([string]$LayerName)
+
+  $aCedilla = [char]0x00E7
+  $aTilde = [char]0x00E3
+
+  if ($LayerName -match "^pnt_pcd_enov_\d{8}$") {
+    return ("Autos de Infra{0}{1}o" -f $aCedilla, $aTilde)
+  }
+
+  if ($LayerName -match "^pnt_pcd_enov_bbox_brasil_\d{8}$") {
+    return ("Autos de Infra{0}{1}o - BBox Brasil" -f $aCedilla, $aTilde)
+  }
+
+  return $null
+}
+
 function Assert-KnownLayerNaming {
   param([string]$LayerName)
 
   if ($LayerName -match "^rst_imb_lulc_" -and [string]::IsNullOrWhiteSpace((Get-ImbLulcLayerTitle -LayerName $LayerName))) {
     Write-Warning "Nao consegui interpretar ano/colecao pelo nome da camada IMB LULC '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
   }
+  elseif ($LayerName -match "^pnt_pcd_enov" -and [string]::IsNullOrWhiteSpace((Get-AutosInfracaoLayerTitle -LayerName $LayerName))) {
+    Write-Warning "Nao consegui interpretar o nome da camada de autos de infracao '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
+  }
 }
-
