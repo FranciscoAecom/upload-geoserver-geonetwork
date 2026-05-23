@@ -1,5 +1,5 @@
 param(
-  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\pcd\ccp_redd_all\Verra, Tero, Cercarbono, SocialCarbon\20260422\00",
+  [string]$Folder = "C:\Users\RibeiroF\Downloads\Nova pasta",
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",
