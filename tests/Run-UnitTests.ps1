@@ -6,6 +6,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $repoRoot "src\Naming.ps1")
 . (Join-Path $repoRoot "src\Metadata.ps1")
 . (Join-Path $repoRoot "src\PublishContext.ps1")
+. (Join-Path $repoRoot "src\Sld.ps1")
 . (Join-Path $repoRoot "src\Urls.ps1")
 . (Join-Path $repoRoot "src\GeoNetwork.ps1")
 
@@ -145,6 +146,43 @@ try {
 
   Assert-Equal (Get-MetadataTitle -XmlPath $xmlPath) "Titulo Teste" "Deve ler titulo do XML"
   Assert-Equal (Get-MetadataUuid -XmlPath $xmlPath) "uuid-teste" "Deve ler UUID do XML"
+
+  $complexSldPath = Join-Path $tempRoot "complex.sld"
+  $complexSld = @'
+<?xml version="1.0" encoding="UTF-8"?>
+<StyledLayerDescriptor xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc" version="1.0.0">
+  <NamedLayer>
+    <Name>camada_original</Name>
+    <UserStyle>
+      <Name>estilo_original</Name>
+      <FeatureTypeStyle>
+        <Rule>
+          <PolygonSymbolizer>
+            <Fill>
+              <CssParameter name="fill">#F2CA27</CssParameter>
+              <CssParameter name="fill-opacity"><![CDATA[0.65]]></CssParameter>
+            </Fill>
+            <Stroke>
+              <CssParameter name="stroke">#0066CC</CssParameter>
+            </Stroke>
+          </PolygonSymbolizer>
+        </Rule>
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>
+'@
+  $utf8NoBom = New-Object Text.UTF8Encoding $false
+  [IO.File]::WriteAllText($complexSldPath, $complexSld, $utf8NoBom)
+  $sldUploadPath = New-SldWithStyleName -SldPath $complexSldPath -StyleName "novo_estilo" -LayerName "nova_camada"
+  try {
+    $originalSldBytes = [Convert]::ToBase64String([IO.File]::ReadAllBytes($complexSldPath))
+    $uploadSldBytes = [Convert]::ToBase64String([IO.File]::ReadAllBytes($sldUploadPath))
+    Assert-Equal $uploadSldBytes $originalSldBytes "SLD de upload deve preservar bytes, cores e CDATA originais"
+  }
+  finally {
+    Remove-Item -LiteralPath $sldUploadPath -Force -ErrorAction SilentlyContinue
+  }
 
   $dictionaryUrl = "https://etlapiqas.iocasta.com.br/get_geonetwork_data_dict?key=uuid-teste"
   $metadataWithEmptyContactUrlAndPlaceholder = @"
