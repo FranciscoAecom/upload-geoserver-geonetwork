@@ -171,6 +171,7 @@ function Publish-GeoServerStyle {
   Write-Host ""
   Write-Host "3/5 - Criando estilo SLD no GeoServer..."
   $sldUploadPath = New-SldWithStyleName -SldPath $SldPath -StyleName $Style -LayerName $Layer
+  $sldContentType = Get-SldContentType -SldPath $SldPath
   try {
     Invoke-Curl -Arguments @(
       "--fail-with-body",
@@ -182,7 +183,7 @@ function Publish-GeoServerStyle {
       "--max-time", "0",
       "--request", "POST",
       "--header", "Authorization: Basic $GeoAuth",
-      "--header", "Content-Type: application/vnd.ogc.sld+xml",
+      "--header", "Content-Type: $sldContentType",
       "--data-binary", "@$sldUploadPath",
       (Get-GeoServerStyleCollectionUrl -GeoServer $GeoServer -Workspace $Workspace -Style $Style)
     ) -DryRun $DryRun
@@ -199,7 +200,7 @@ function Publish-GeoServerStyle {
       "--max-time", "0",
       "--request", "PUT",
       "--header", "Authorization: Basic $GeoAuth",
-      "--header", "Content-Type: application/vnd.ogc.sld+xml",
+      "--header", "Content-Type: $sldContentType",
       "--data-binary", "@$sldUploadPath",
       (Get-GeoServerStyleUrl -GeoServer $GeoServer -Workspace $Workspace -Style $Style)
     ) -DryRun $DryRun

@@ -121,6 +121,10 @@ function Get-AutosInfracaoLayerTitle {
     return ("Autos de Infra{0}{1}o" -f $aCedilla, $aTilde)
   }
 
+  if ($LayerName -match "^pnt_pcd_enov_brasil_\d{8}$") {
+    return ("Autos de Infra{0}{1}o - Brasil" -f $aCedilla, $aTilde)
+  }
+
   if ($LayerName -match "^pnt_pcd_enov_bbox_brasil_\d{8}$") {
     return ("Autos de Infra{0}{1}o - BBox Brasil" -f $aCedilla, $aTilde)
   }

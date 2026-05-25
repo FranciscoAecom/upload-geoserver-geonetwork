@@ -13,3 +13,14 @@ function New-SldWithStyleName {
   return $tempSld
 }
 
+function Get-SldContentType {
+  param([string]$SldPath)
+
+  $sldContent = [IO.File]::ReadAllText($SldPath, [Text.Encoding]::UTF8)
+  if ($sldContent -match 'version\s*=\s*["'']1\.1\.0["'']' -or $sldContent -match 'http://www\.opengis\.net/se') {
+    return "application/vnd.ogc.se+xml"
+  }
+
+  return "application/vnd.ogc.sld+xml"
+}
+

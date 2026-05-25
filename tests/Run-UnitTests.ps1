@@ -96,12 +96,14 @@ try {
   $expectedAppCarTitle = ("{0}rea de Preserva{1}{2}o Permanente - Im{3}veis Bahia" -f $aAcuteUpper, $cCedilla, $aTilde, $oAcute)
   $expectedImbLulcTitle = ("Uso e cobertura da terra de 2011 - Cole{0}{1}o 10" -f $cCedilla, $aTilde)
   $expectedAutosInfracaoTitle = ("Autos de Infra{0}{1}o" -f $cCedilla, $aTilde)
+  $expectedAutosInfracaoBrasilTitle = ("Autos de Infra{0}{1}o - Brasil" -f $cCedilla, $aTilde)
   $expectedAutosInfracaoBboxTitle = ("Autos de Infra{0}{1}o - BBox Brasil" -f $cCedilla, $aTilde)
 
   Assert-Equal (Get-StateNameFromLayer -LayerName "pol_pcd_app_car_ba_20260301") "Bahia" "Deve identificar UF pelo nome da camada"
   Assert-Equal (Get-AppCarLayerTitle -LayerName "pol_pcd_app_car_ba_20260301") $expectedAppCarTitle "Deve montar titulo APP CAR"
   Assert-Equal (Get-ImbLulcLayerTitle -LayerName "rst_imb_lulc_20110101") $expectedImbLulcTitle "Deve montar titulo IMB LULC com colecao"
   Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_20260514") $expectedAutosInfracaoTitle "Deve montar titulo de autos de infracao"
+  Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_brasil_20260514") $expectedAutosInfracaoBrasilTitle "Deve montar titulo de autos de infracao Brasil"
   Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_bbox_brasil_20260514") $expectedAutosInfracaoBboxTitle "Deve montar titulo de autos de infracao com bbox Brasil"
 
   $configPath = Join-Path $tempRoot "test.psd1"
@@ -183,6 +185,36 @@ try {
   finally {
     Remove-Item -LiteralPath $sldUploadPath -Force -ErrorAction SilentlyContinue
   }
+  Assert-Equal (Get-SldContentType -SldPath $complexSldPath) "application/vnd.ogc.sld+xml" "SLD 1.0 deve usar content type SLD"
+
+  $seSldPath = Join-Path $tempRoot "se.sld"
+  $seSld = @'
+<?xml version="1.0" encoding="UTF-8"?>
+<StyledLayerDescriptor xmlns="http://www.opengis.net/sld" version="1.1.0" xmlns:se="http://www.opengis.net/se">
+  <NamedLayer>
+    <se:Name>pnt_pcd_enov_brasil_20260514</se:Name>
+    <UserStyle>
+      <se:Name>pnt_pcd_enov_brasil_20260514</se:Name>
+      <se:FeatureTypeStyle>
+        <se:Rule>
+          <se:PointSymbolizer>
+            <se:Graphic>
+              <se:Mark>
+                <se:WellKnownName>circle</se:WellKnownName>
+                <se:Fill>
+                  <se:SvgParameter name="fill">#1654ad</se:SvgParameter>
+                </se:Fill>
+              </se:Mark>
+            </se:Graphic>
+          </se:PointSymbolizer>
+        </se:Rule>
+      </se:FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>
+'@
+  [IO.File]::WriteAllText($seSldPath, $seSld, $utf8NoBom)
+  Assert-Equal (Get-SldContentType -SldPath $seSldPath) "application/vnd.ogc.se+xml" "SLD 1.1/SE deve usar content type SE"
 
   $dictionaryUrl = "https://etlapiqas.iocasta.com.br/get_geonetwork_data_dict?key=uuid-teste"
   $metadataWithEmptyContactUrlAndPlaceholder = @"
@@ -208,6 +240,7 @@ try {
   Assert-Equal $context.GeoServerLayerTitle $expectedAppCarTitle "Contexto deve usar titulo amigavel no GeoServer"
 
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_pcd_enov_20260514" -LayerTitle "Titulo XML") $expectedAutosInfracaoTitle "Contexto deve usar titulo amigavel para autos de infracao"
+  Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_pcd_enov_brasil_20260514" -LayerTitle "Titulo XML") $expectedAutosInfracaoBrasilTitle "Contexto deve usar titulo amigavel para autos de infracao Brasil"
 
   Assert-Equal (Join-UrlPath -BaseUrl "https://server/base/" -Segments @("/a/", "b")) "https://server/base/a/b" "Deve juntar segmentos de URL sem duplicar barras"
   Assert-Equal (Get-GeoServerDataUploadUrl -GeoServer "https://gis/geoserver" -Workspace "gold" -DataEndpoint "datastores" -Store "store1" -DataType "gpkg") "https://gis/geoserver/rest/workspaces/gold/datastores/store1/file.gpkg?configure=all" "Deve montar URL de upload GeoServer"
