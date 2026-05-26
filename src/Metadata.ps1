@@ -229,7 +229,7 @@ function Add-QualitySourceLink {
     [string]$SourceUrl
   )
 
-  if ([string]::IsNullOrWhiteSpace($SourceUrl) -or $XmlContent -like "*$SourceUrl*") {
+  if ([string]::IsNullOrWhiteSpace($SourceUrl)) {
     return @{
       Content = $XmlContent
       Inserted = $false
@@ -242,6 +242,15 @@ function Add-QualitySourceLink {
 
   $namespaceManager = New-Object System.Xml.XmlNamespaceManager($document.NameTable)
   $namespaceManager.AddNamespace("gmd", "http://www.isotc211.org/2005/gmd")
+
+  $escapedSourceUrlForXPath = $SourceUrl.Replace("'", "&apos;")
+  $existingSourceUrlNode = $document.SelectSingleNode("//gmd:dataQualityInfo//gmd:lineage//gmd:source//gmd:sourceCitation//gmd:onlineResource//gmd:linkage/gmd:URL[normalize-space()='$escapedSourceUrlForXPath']", $namespaceManager)
+  if ($null -ne $existingSourceUrlNode) {
+    return @{
+      Content = $XmlContent
+      Inserted = $false
+    }
+  }
 
   $urlNode = $document.SelectSingleNode("//gmd:dataQualityInfo//gmd:lineage//gmd:source//gmd:sourceCitation//gmd:onlineResource//gmd:linkage/gmd:URL[not(normalize-space())]", $namespaceManager)
   if ($null -ne $urlNode) {
