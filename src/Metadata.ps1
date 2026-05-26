@@ -214,12 +214,172 @@ function Add-DataDictionaryLink {
   }
 }
 
+function New-GmdElement {
+  param(
+    [System.Xml.XmlDocument]$Document,
+    [string]$Name
+  )
+
+  return $Document.CreateElement("gmd", $Name, "http://www.isotc211.org/2005/gmd")
+}
+
+function Add-QualitySourceLink {
+  param(
+    [string]$XmlContent,
+    [string]$SourceUrl
+  )
+
+  if ([string]::IsNullOrWhiteSpace($SourceUrl) -or $XmlContent -like "*$SourceUrl*") {
+    return @{
+      Content = $XmlContent
+      Inserted = $false
+    }
+  }
+
+  $document = New-Object Xml.XmlDocument
+  $document.PreserveWhitespace = $true
+  $document.LoadXml($XmlContent)
+
+  $namespaceManager = New-Object System.Xml.XmlNamespaceManager($document.NameTable)
+  $namespaceManager.AddNamespace("gmd", "http://www.isotc211.org/2005/gmd")
+
+  $urlNode = $document.SelectSingleNode("//gmd:dataQualityInfo//gmd:lineage//gmd:source//gmd:sourceCitation//gmd:onlineResource//gmd:linkage/gmd:URL[not(normalize-space())]", $namespaceManager)
+  if ($null -ne $urlNode) {
+    $urlNode.InnerText = $SourceUrl
+    return @{
+      Content = $document.OuterXml
+      Inserted = $true
+    }
+  }
+
+  $lineageNode = $document.SelectSingleNode("//gmd:dataQualityInfo/gmd:DQ_DataQuality/gmd:lineage/gmd:LI_Lineage", $namespaceManager)
+  if ($null -eq $lineageNode) {
+    return @{
+      Content = $XmlContent
+      Inserted = $false
+    }
+  }
+
+  $sourceNode = $document.SelectSingleNode("//gmd:dataQualityInfo//gmd:lineage//gmd:source/gmd:LI_Source", $namespaceManager)
+  if ($null -eq $sourceNode) {
+    $sourceWrapperNode = New-GmdElement -Document $document -Name "source"
+    $sourceNode = New-GmdElement -Document $document -Name "LI_Source"
+    [void]$sourceWrapperNode.AppendChild($sourceNode)
+    [void]$lineageNode.AppendChild($sourceWrapperNode)
+  }
+
+  $sourceCitationWrapperNode = $sourceNode.SelectSingleNode("gmd:sourceCitation", $namespaceManager)
+  if ($null -eq $sourceCitationWrapperNode) {
+    $sourceCitationWrapperNode = New-GmdElement -Document $document -Name "sourceCitation"
+    [void]$sourceNode.AppendChild($sourceCitationWrapperNode)
+  }
+
+  $citationNode = $sourceCitationWrapperNode.SelectSingleNode("gmd:CI_Citation", $namespaceManager)
+  if ($null -eq $citationNode) {
+    $citationNode = New-GmdElement -Document $document -Name "CI_Citation"
+    [void]$sourceCitationWrapperNode.AppendChild($citationNode)
+  }
+
+  $onlineResourceWrapperNode = New-GmdElement -Document $document -Name "onlineResource"
+  $onlineResourceNode = New-GmdElement -Document $document -Name "CI_OnlineResource"
+  $linkageNode = New-GmdElement -Document $document -Name "linkage"
+  $urlNode = New-GmdElement -Document $document -Name "URL"
+  $urlNode.InnerText = $SourceUrl
+
+  [void]$linkageNode.AppendChild($urlNode)
+  [void]$onlineResourceNode.AppendChild($linkageNode)
+  [void]$onlineResourceWrapperNode.AppendChild($onlineResourceNode)
+  [void]$citationNode.AppendChild($onlineResourceWrapperNode)
+
+  return @{
+    Content = $document.OuterXml
+    Inserted = $true
+  }
+}
+
 function Write-TemporaryMetadataXml {
   param([string]$XmlContent)
 
-  $tempXml = Join-Path ([IO.Path]::GetTempPath()) ("metadata_with_data_dictionary_{0}.xml" -f ([guid]::NewGuid()))
+  $tempXml = Join-Path ([IO.Path]::GetTempPath()) ("metadata_geonetwork_upload_{0}.xml" -f ([guid]::NewGuid()))
   $utf8NoBom = New-Object Text.UTF8Encoding $false
   [IO.File]::WriteAllText($tempXml, $XmlContent, $utf8NoBom)
+  return $tempXml
+}
+
+function New-MetadataXmlForGeoNetworkUpload {
+  param(
+    [string]$XmlPath,
+    [string]$DataDictionaryBaseUrl,
+    [hashtable]$AttributeTypes,
+    [string]$QualitySourceUrl
+  )
+
+  $xmlContent = [IO.File]::ReadAllText($XmlPath, [Text.Encoding]::UTF8)
+  $sourceLinkResult = Add-QualitySourceLink -XmlContent $xmlContent -SourceUrl $QualitySourceUrl
+  $xmlContent = $sourceLinkResult.Content
+
+  $metadataUuid = Get-MetadataUuid -XmlPath $XmlPath
+  if ([string]::IsNullOrWhiteSpace($metadataUuid)) {
+    if ($sourceLinkResult.Inserted) {
+      $tempXml = Write-TemporaryMetadataXml -XmlContent $xmlContent
+      Write-Host "Link da fonte inserido na qualidade do XML temporario:"
+      Write-Host "  $QualitySourceUrl"
+      Write-Warning "Nao foi possivel identificar o UUID do XML; importando sem link do dicionario de dados."
+      return $tempXml
+    }
+
+    Write-Warning "Nao foi possivel identificar o UUID do XML; importando sem link do dicionario de dados."
+    return $XmlPath
+  }
+
+  $dictionaryUrl = Get-DataDictionaryUrl -DataDictionaryBaseUrl $DataDictionaryBaseUrl -MetadataUuid $metadataUuid
+  $typeUpdateResult = Set-DataDictionaryFieldTypes -XmlContent $xmlContent -AttributeTypes $AttributeTypes
+  $xmlContent = $typeUpdateResult.Content
+  $updatedTypeCount = $typeUpdateResult.Count
+  if ($xmlContent -like "*$dictionaryUrl*") {
+    if ($updatedTypeCount -eq 0 -and -not $sourceLinkResult.Inserted) {
+      return $XmlPath
+    }
+
+    $tempXml = Write-TemporaryMetadataXml -XmlContent $xmlContent
+    if ($sourceLinkResult.Inserted) {
+      Write-Host "Link da fonte inserido na qualidade do XML temporario:"
+      Write-Host "  $QualitySourceUrl"
+    }
+    if ($updatedTypeCount -gt 0) {
+      Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
+    }
+    return $tempXml
+  }
+
+  $linkResult = Add-DataDictionaryLink -XmlContent $xmlContent -DictionaryUrl $dictionaryUrl
+  if (-not $linkResult.Inserted) {
+    Write-Warning "Nao encontrei <gmd:URL/> vazio nem placeholder do segundo link; importando sem inserir link do dicionario de dados."
+    if ($updatedTypeCount -eq 0 -and -not $sourceLinkResult.Inserted) {
+      return $XmlPath
+    }
+
+    $tempXml = Write-TemporaryMetadataXml -XmlContent $xmlContent
+    if ($sourceLinkResult.Inserted) {
+      Write-Host "Link da fonte inserido na qualidade do XML temporario:"
+      Write-Host "  $QualitySourceUrl"
+    }
+    if ($updatedTypeCount -gt 0) {
+      Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
+    }
+    return $tempXml
+  }
+
+  $tempXml = Write-TemporaryMetadataXml -XmlContent $linkResult.Content
+  if ($sourceLinkResult.Inserted) {
+    Write-Host "Link da fonte inserido na qualidade do XML temporario:"
+    Write-Host "  $QualitySourceUrl"
+  }
+  Write-Host "Link do dicionario de dados inserido no XML temporario:"
+  Write-Host "  $dictionaryUrl"
+  if ($updatedTypeCount -gt 0) {
+    Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
+  }
   return $tempXml
 }
 
@@ -227,48 +387,10 @@ function New-MetadataXmlWithDataDictionaryLink {
   param(
     [string]$XmlPath,
     [string]$DataDictionaryBaseUrl,
-    [hashtable]$AttributeTypes
+    [hashtable]$AttributeTypes,
+    [string]$QualitySourceUrl
   )
 
-  $metadataUuid = Get-MetadataUuid -XmlPath $XmlPath
-  if ([string]::IsNullOrWhiteSpace($metadataUuid)) {
-    Write-Warning "Nao foi possivel identificar o UUID do XML; importando sem link do dicionario de dados."
-    return $XmlPath
-  }
-
-  $dictionaryUrl = Get-DataDictionaryUrl -DataDictionaryBaseUrl $DataDictionaryBaseUrl -MetadataUuid $metadataUuid
-  $xmlContent = [IO.File]::ReadAllText($XmlPath, [Text.Encoding]::UTF8)
-  $typeUpdateResult = Set-DataDictionaryFieldTypes -XmlContent $xmlContent -AttributeTypes $AttributeTypes
-  $xmlContent = $typeUpdateResult.Content
-  $updatedTypeCount = $typeUpdateResult.Count
-  if ($xmlContent -like "*$dictionaryUrl*") {
-    if ($updatedTypeCount -eq 0) {
-      return $XmlPath
-    }
-
-    $tempXml = Write-TemporaryMetadataXml -XmlContent $xmlContent
-    Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
-    return $tempXml
-  }
-
-  $linkResult = Add-DataDictionaryLink -XmlContent $xmlContent -DictionaryUrl $dictionaryUrl
-  if (-not $linkResult.Inserted) {
-    Write-Warning "Nao encontrei <gmd:URL/> vazio nem placeholder do segundo link; importando sem inserir link do dicionario de dados."
-    if ($updatedTypeCount -eq 0) {
-      return $XmlPath
-    }
-
-    $tempXml = Write-TemporaryMetadataXml -XmlContent $xmlContent
-    Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
-    return $tempXml
-  }
-
-  $tempXml = Write-TemporaryMetadataXml -XmlContent $linkResult.Content
-  Write-Host "Link do dicionario de dados inserido no XML temporario:"
-  Write-Host "  $dictionaryUrl"
-  if ($updatedTypeCount -gt 0) {
-    Write-Host "Tipos do dicionario de dados inseridos no XML temporario: $updatedTypeCount"
-  }
-  return $tempXml
+  return New-MetadataXmlForGeoNetworkUpload -XmlPath $XmlPath -DataDictionaryBaseUrl $DataDictionaryBaseUrl -AttributeTypes $AttributeTypes -QualitySourceUrl $QualitySourceUrl
 }
 

@@ -232,6 +232,58 @@ try {
   Assert-True ($linkResult.Content -like "*<contact>*<gmd:URL/>*</contact>*") "Nao deve usar URL vazia de contato antes do placeholder"
   Assert-True ($linkResult.Content -like "*<distribution>*<gmd:URL>https://etlapiqas.iocasta.com.br/get_geonetwork_data_dict?key=uuid-teste</gmd:URL>*</distribution>*") "Deve inserir link no placeholder de distribuicao"
 
+  $sourceUrl = "https://www.ibge.gov.br/geociencias/organizacao-do-territorio/estrutura-territorial/27385-localidades.html"
+  $metadataWithEmptyQualitySourceUrl = @"
+<gmd:MD_Metadata xmlns:gmd="http://www.isotc211.org/2005/gmd" xmlns:gco="http://www.isotc211.org/2005/gco">
+  <gmd:dataQualityInfo>
+    <gmd:DQ_DataQuality>
+      <gmd:lineage>
+        <gmd:LI_Lineage>
+          <gmd:source>
+            <gmd:LI_Source>
+              <gmd:sourceCitation>
+                <gmd:CI_Citation>
+                  <gmd:onlineResource>
+                    <gmd:CI_OnlineResource>
+                      <gmd:linkage>
+                        <gmd:URL/>
+                      </gmd:linkage>
+                    </gmd:CI_OnlineResource>
+                  </gmd:onlineResource>
+                </gmd:CI_Citation>
+              </gmd:sourceCitation>
+            </gmd:LI_Source>
+          </gmd:source>
+        </gmd:LI_Lineage>
+      </gmd:lineage>
+    </gmd:DQ_DataQuality>
+  </gmd:dataQualityInfo>
+</gmd:MD_Metadata>
+"@
+  $sourceLinkResult = Add-QualitySourceLink -XmlContent $metadataWithEmptyQualitySourceUrl -SourceUrl $sourceUrl
+  Assert-True $sourceLinkResult.Inserted "Deve inserir link da fonte na qualidade quando houver URL vazia em sourceCitation"
+  Assert-True ($sourceLinkResult.Content -like "*<gmd:sourceCitation>*<gmd:CI_Citation>*<gmd:onlineResource>*<gmd:CI_OnlineResource>*<gmd:linkage>*<gmd:URL>$sourceUrl</gmd:URL>*") "XML atualizado deve conter link da fonte em qualidade"
+
+  $metadataWithQualitySourceNoOnlineResource = @"
+<gmd:MD_Metadata xmlns:gmd="http://www.isotc211.org/2005/gmd" xmlns:gco="http://www.isotc211.org/2005/gco">
+  <gmd:dataQualityInfo>
+    <gmd:DQ_DataQuality>
+      <gmd:lineage>
+        <gmd:LI_Lineage>
+          <gmd:source>
+            <gmd:LI_Source>
+            </gmd:LI_Source>
+          </gmd:source>
+        </gmd:LI_Lineage>
+      </gmd:lineage>
+    </gmd:DQ_DataQuality>
+  </gmd:dataQualityInfo>
+</gmd:MD_Metadata>
+"@
+  $createdSourceLinkResult = Add-QualitySourceLink -XmlContent $metadataWithQualitySourceNoOnlineResource -SourceUrl $sourceUrl
+  Assert-True $createdSourceLinkResult.Inserted "Deve criar onlineResource da fonte quando a qualidade ja possui lineage/source"
+  Assert-True ($createdSourceLinkResult.Content -like "*<gmd:sourceCitation><gmd:CI_Citation><gmd:onlineResource><gmd:CI_OnlineResource><gmd:linkage><gmd:URL>$sourceUrl</gmd:URL>*") "XML atualizado deve criar estrutura de link da fonte"
+
   $context = New-PublishContext -DataPath $dataPath -SldPath $sldPath -XmlPath $xmlPath
   Assert-Equal $context.Store "pol_pcd_app_car_ba_20260301" "Contexto deve derivar store do arquivo"
   Assert-Equal $context.Layer "pol_pcd_app_car_ba_20260301" "Contexto deve derivar layer do arquivo"

@@ -10,6 +10,7 @@ param(
   [string]$CatalogGroup = "2",
   [string]$CatalogCategory = "2",
   [string]$DataDictionaryBaseUrl = "https://etlapiqas.iocasta.com.br/get_geonetwork_data_dict",
+  [string]$QualitySourceUrl,
   [switch]$SameCredentialForCatalog,
   [switch]$SkipGeoServer,
   [switch]$SkipGeoPackage,
@@ -41,6 +42,7 @@ $Workspace = Get-ConfigValue -Config $config -BoundParameters $PSBoundParameters
 $CatalogGroup = Get-ConfigValue -Config $config -BoundParameters $PSBoundParameters -Name "CatalogGroup" -CurrentValue $CatalogGroup
 $CatalogCategory = Get-ConfigValue -Config $config -BoundParameters $PSBoundParameters -Name "CatalogCategory" -CurrentValue $CatalogCategory
 $DataDictionaryBaseUrl = Get-ConfigValue -Config $config -BoundParameters $PSBoundParameters -Name "DataDictionaryBaseUrl" -CurrentValue $DataDictionaryBaseUrl
+$QualitySourceUrl = Get-ConfigValue -Config $config -BoundParameters $PSBoundParameters -Name "QualitySourceUrl" -CurrentValue $QualitySourceUrl
 
 if (-not (Test-Path -LiteralPath $Folder)) {
   throw "Pasta nao encontrada: $Folder"
@@ -66,6 +68,9 @@ Write-Host "Layer: $($publishContext.Layer)"
 Write-Host "Style: $($publishContext.Style)"
 Write-Host "Titulo Catalogo: $($publishContext.LayerTitle)"
 Write-Host "Titulo GeoServer: $($publishContext.GeoServerLayerTitle)"
+if (-not [string]::IsNullOrWhiteSpace($QualitySourceUrl)) {
+  Write-Host "Fonte qualidade: $QualitySourceUrl"
+}
 if ($DryRun) {
   Write-Host "Modo: DRY-RUN (nenhum curl sera executado)"
 }
@@ -102,6 +107,7 @@ else {
     -XmlPath $publishContext.XmlPath `
     -DataDictionaryBaseUrl $DataDictionaryBaseUrl `
     -AttributeTypes $geoServerAttributeTypes `
+    -QualitySourceUrl $QualitySourceUrl `
     -CatalogGroup $CatalogGroup `
     -CatalogCategory $CatalogCategory `
     -GeoCredential $geoCredential `

@@ -92,6 +92,7 @@ function Import-GeoNetworkMetadata {
     [string]$XmlPath,
     [string]$DataDictionaryBaseUrl,
     [hashtable]$AttributeTypes,
+    [string]$QualitySourceUrl,
     [string]$CatalogGroup,
     [string]$CatalogCategory,
     [pscredential]$GeoCredential,
@@ -102,7 +103,7 @@ function Import-GeoNetworkMetadata {
   Write-Host ""
   Write-Host "5/5 - Importando XML no catalogo GeoNetwork..."
   Write-Host "Abrindo sessao e capturando token XSRF do GeoNetwork..."
-  $metadataUploadPath = New-MetadataXmlWithDataDictionaryLink -XmlPath $XmlPath -DataDictionaryBaseUrl $DataDictionaryBaseUrl -AttributeTypes $AttributeTypes
+  $metadataUploadPath = New-MetadataXmlWithDataDictionaryLink -XmlPath $XmlPath -DataDictionaryBaseUrl $DataDictionaryBaseUrl -AttributeTypes $AttributeTypes -QualitySourceUrl $QualitySourceUrl
   $catalogCredential = $null
   $catalogAuth = "DRYRUN"
   if ($DryRun) {
