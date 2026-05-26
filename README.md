@@ -132,6 +132,7 @@ Autos de Infracao - BBox Brasil
 | `CatalogGroup` | `2` | Grupo usado na importacao do GeoNetwork. |
 | `CatalogCategory` | `2` | Categoria usada na importacao do GeoNetwork. |
 | `DataDictionaryBaseUrl` | endpoint QAS | Base para inserir link do dicionario de dados no XML. |
+| `QualitySourceUrl` | vazio | Link opcional da fonte para inserir na qualidade/linhagem do XML no GeoNetwork. |
 | `Environment` | `qas` | Nome do ambiente carregado de `config/<ambiente>.psd1`. |
 | `ConfigPath` | vazio | Caminho opcional para um arquivo `.psd1` especifico. |
 | `SkipCertificateRevocationCheck` | falso | Adiciona `--ssl-no-revoke` ao `curl.exe` para ambientes Windows/Schannel onde a verificacao de revogacao do certificado falha. |
@@ -170,6 +171,16 @@ no workspace informado.
 - `-SkipCertificateRevocationCheck`: desativa a verificacao de revogacao de certificado do `curl.exe` (`--ssl-no-revoke`), util quando o Windows retorna `CRYPT_E_NO_REVOCATION_CHECK`.
 - `-DryRun`: mostra os comandos `curl.exe` que seriam executados, sem pedir credenciais e sem publicar nada.
 
+Para gravar o link da fonte em qualidade no GeoNetwork, informe o link da base atual:
+
+```powershell
+.\upload_iocasta_qas.ps1 `
+  -Folder "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\loc\localidades\IBGE\20251119\00" `
+  -Workspace "gold" `
+  -SameCredentialForCatalog `
+  -QualitySourceUrl "https://www.ibge.gov.br/geociencias/organizacao-do-territorio/estrutura-territorial/27385-localidades.html"
+```
+
 Exemplo para conferir a publicacao antes de executar de verdade:
 
 ```powershell
@@ -187,7 +198,7 @@ Exemplo para conferir a publicacao antes de executar de verdade:
 3. Ajusta o titulo da camada.
 4. Cria ou atualiza o estilo SLD.
 5. Associa o estilo como estilo padrao da camada.
-6. Insere, quando possivel, o link do dicionario de dados no XML temporario.
+6. Insere, quando possivel, o link do dicionario de dados e o link opcional da fonte no XML temporario.
 7. Importa os metadados no GeoNetwork, tentando primeiro a API moderna e depois endpoints legados.
 
 ## Estrutura do projeto
