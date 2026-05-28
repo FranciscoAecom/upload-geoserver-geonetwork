@@ -130,6 +130,8 @@ function Import-GeoNetworkMetadata {
       "--fail-with-body",
       "--show-error",
       "--location",
+      "--retry", "5",
+      "--retry-delay", "15",
       "--connect-timeout", "60",
       "--max-time", "0",
       "--cookie-jar", $cookieJar.FullName,
