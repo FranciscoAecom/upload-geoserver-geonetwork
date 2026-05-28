@@ -94,6 +94,34 @@ function Publish-GeoServerData {
   ) -DryRun $DryRun
 }
 
+function Test-GeoServerCredential {
+  param(
+    [string]$GeoServer,
+    [string]$GeoAuth,
+    [bool]$DryRun = $false
+  )
+
+  Write-Host ""
+  Write-Host "Validando credenciais do GeoServer..."
+  try {
+    [void](Invoke-CurlCapture -Arguments @(
+      "--fail-with-body",
+      "--show-error",
+      "--location",
+      "--retry", "1",
+      "--retry-delay", "2",
+      "--connect-timeout", "30",
+      "--max-time", "60",
+      "--header", "Authorization: Basic $GeoAuth",
+      "--header", "Accept: application/json",
+      (Get-GeoServerVersionUrl -GeoServer $GeoServer)
+    ) -DryRun $DryRun)
+  }
+  catch {
+    throw "GeoServer recusou as credenciais ou o usuario nao tem permissao REST em $(Get-GeoServerVersionUrl -GeoServer $GeoServer). Detalhe: $($_.Exception.Message)"
+  }
+}
+
 function Set-GeoServerLayerTitle {
   param(
     [string]$GeoServer,
@@ -274,6 +302,8 @@ function Invoke-GeoServerPublish {
     $geoCredential = Get-Credential -Message "Credenciais do GeoServer QAS"
     $geoAuth = ConvertTo-BasicAuth -Credential $geoCredential
   }
+
+  Test-GeoServerCredential -GeoServer $GeoServer -GeoAuth $geoAuth -DryRun $DryRun
 
   if ($SkipGeoPackage) {
     Write-Host ""

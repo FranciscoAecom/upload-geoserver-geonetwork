@@ -26,6 +26,12 @@ function Get-GeoServerDataUploadUrl {
   return "$(Join-UrlPath -BaseUrl $GeoServer -Segments @("rest", "workspaces", $Workspace, $DataEndpoint, $Store, "file.${DataType}"))?configure=all"
 }
 
+function Get-GeoServerVersionUrl {
+  param([string]$GeoServer)
+
+  return Join-UrlPath -BaseUrl $GeoServer -Segments @("rest", "about", "version.json")
+}
+
 function Get-GeoServerLayerResourceUrl {
   param(
     [string]$GeoServer,

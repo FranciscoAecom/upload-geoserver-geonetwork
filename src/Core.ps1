@@ -49,7 +49,7 @@ function ConvertTo-BasicAuth {
   $user = $Credential.UserName
   $pass = $Credential.GetNetworkCredential().Password
   $pair = "$user`:$pass"
-  return [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair))
+  return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($pair))
 }
 
 function Repair-Mojibake {

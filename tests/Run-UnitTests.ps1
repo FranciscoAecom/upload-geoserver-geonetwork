@@ -123,6 +123,11 @@ try {
   Assert-Equal (Get-ConfigValue -Config $config -BoundParameters @{} -Name "CatalogGroup" -CurrentValue "2") "9" "Config deve preencher parametro nao informado"
   Assert-Equal (Get-ConfigValue -Config $config -BoundParameters @{ CatalogGroup = "2" } -Name "CatalogGroup" -CurrentValue "2") "2" "Parametro informado deve sobrescrever config"
 
+  $securePassword = ConvertTo-SecureString ("senha-{0}" -f $cCedilla) -AsPlainText -Force
+  $credential = [pscredential]::new(("usu{0}rio" -f $aTilde), $securePassword)
+  $expectedBasicAuth = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(("usu{0}rio:senha-{1}" -f $aTilde, $cCedilla)))
+  Assert-Equal (ConvertTo-BasicAuth -Credential $credential) $expectedBasicAuth "Basic Auth deve preservar caracteres nao ASCII"
+
   $inputFolder = Join-Path $tempRoot "input"
   New-Item -ItemType Directory -Path $inputFolder | Out-Null
   $dataPath = Join-Path $inputFolder "pol_pcd_app_car_ba_20260301.gpkg"
@@ -295,6 +300,7 @@ try {
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_pcd_enov_brasil_20260514" -LayerTitle "Titulo XML") $expectedAutosInfracaoBrasilTitle "Contexto deve usar titulo amigavel para autos de infracao Brasil"
 
   Assert-Equal (Join-UrlPath -BaseUrl "https://server/base/" -Segments @("/a/", "b")) "https://server/base/a/b" "Deve juntar segmentos de URL sem duplicar barras"
+  Assert-Equal (Get-GeoServerVersionUrl -GeoServer "https://gis/geoserver") "https://gis/geoserver/rest/about/version.json" "Deve montar URL de versao GeoServer"
   Assert-Equal (Get-GeoServerDataUploadUrl -GeoServer "https://gis/geoserver" -Workspace "gold" -DataEndpoint "datastores" -Store "store1" -DataType "gpkg") "https://gis/geoserver/rest/workspaces/gold/datastores/store1/file.gpkg?configure=all" "Deve montar URL de upload GeoServer"
   Assert-Equal (Get-GeoServerLayerJsonUrl -GeoServer "https://gis/geoserver" -Workspace "gold" -Layer "layer1") "https://gis/geoserver/rest/layers/gold:layer1.json" "Deve montar URL JSON da camada"
   Assert-Equal (Get-GeoNetworkMeUrl -Catalog "https://catalog") "https://catalog/srv/api/me" "Deve montar URL /me do GeoNetwork"
