@@ -132,6 +132,17 @@ function Get-AutosInfracaoLayerTitle {
   return $null
 }
 
+function Get-SetorCensitarioLayerTitle {
+  param([string]$LayerName)
+
+  if ($LayerName -notmatch "^pol_loc_cse_\d{8}$") {
+    return $null
+  }
+
+  $aAcute = [char]0x00E1
+  return ("Setor Censit{0}rio" -f $aAcute)
+}
+
 function Assert-KnownLayerNaming {
   param([string]$LayerName)
 
@@ -140,5 +151,8 @@ function Assert-KnownLayerNaming {
   }
   elseif ($LayerName -match "^pnt_pcd_enov" -and [string]::IsNullOrWhiteSpace((Get-AutosInfracaoLayerTitle -LayerName $LayerName))) {
     Write-Warning "Nao consegui interpretar o nome da camada de autos de infracao '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
+  }
+  elseif ($LayerName -match "^pol_loc_cse_" -and [string]::IsNullOrWhiteSpace((Get-SetorCensitarioLayerTitle -LayerName $LayerName))) {
+    Write-Warning "Nao consegui interpretar o nome da camada de setor censitario '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
   }
 }

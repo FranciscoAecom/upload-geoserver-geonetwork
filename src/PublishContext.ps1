@@ -88,6 +88,9 @@ function Resolve-GeoServerLayerTitle {
   elseif ($Layer -match "^pnt_pcd_enov") {
     $geoServerLayerTitle = Get-AutosInfracaoLayerTitle -LayerName $Layer
   }
+  elseif ($Layer -match "^pol_loc_cse_") {
+    $geoServerLayerTitle = Get-SetorCensitarioLayerTitle -LayerName $Layer
+  }
 
   if ([string]::IsNullOrWhiteSpace($geoServerLayerTitle)) {
     $geoServerLayerTitle = $LayerTitle
