@@ -100,6 +100,7 @@ try {
   $expectedAutosInfracaoBboxTitle = ("Autos de Infra{0}{1}o - BBox Brasil" -f $cCedilla, $aTilde)
   $expectedSetorCensitarioTitle = ("Setor Censit{0}rio" -f ([char]0x00E1))
   $expectedCtbpTitle = ("Censo demogr{0}fico por Setor Censit{1}rio - Par{2}metros b{3}sicos (2022)" -f ([char]0x00E1), ([char]0x00E1), ([char]0x00E2), ([char]0x00E1))
+  $expectedDfaabTitle = ("Degrada{0}{1}o em {2}reas de Floresta - Bioma Amaz{3}nia" -f $cCedilla, $aTilde, $aAcuteUpper, ([char]0x00F4))
 
   Assert-Equal (Get-StateNameFromLayer -LayerName "pol_pcd_app_car_ba_20260301") "Bahia" "Deve identificar UF pelo nome da camada"
   Assert-Equal (Get-AppCarLayerTitle -LayerName "pol_pcd_app_car_ba_20260301") $expectedAppCarTitle "Deve montar titulo APP CAR"
@@ -109,6 +110,7 @@ try {
   Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_bbox_brasil_20260514") $expectedAutosInfracaoBboxTitle "Deve montar titulo de autos de infracao com bbox Brasil"
   Assert-Equal (Get-SetorCensitarioLayerTitle -LayerName "pol_loc_cse_20241114") $expectedSetorCensitarioTitle "Deve montar titulo de setor censitario"
   Assert-Equal (Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName "pol_soc_ctbp_20260520") $expectedCtbpTitle "Deve montar titulo de censo territorial basico parametros"
+  Assert-Equal (Get-DegradacaoFlorestaAmazoniaLayerTitle -LayerName "pol_dfaab_imb_20260601") $expectedDfaabTitle "Deve montar titulo de degradacao em areas de floresta - bioma Amazonia"
 
   $configPath = Join-Path $tempRoot "test.psd1"
   Set-Content -LiteralPath $configPath -Value @"
@@ -304,6 +306,7 @@ try {
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_pcd_enov_brasil_20260514" -LayerTitle "Titulo XML") $expectedAutosInfracaoBrasilTitle "Contexto deve usar titulo amigavel para autos de infracao Brasil"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_loc_cse_20241114" -LayerTitle "Titulo XML") $expectedSetorCensitarioTitle "Contexto deve usar titulo amigavel para setor censitario"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_soc_ctbp_20260520" -LayerTitle "Titulo XML") $expectedCtbpTitle "Contexto deve usar titulo amigavel para censo territorial basico parametros"
+  Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_dfaab_imb_20260601" -LayerTitle "Titulo XML") $expectedDfaabTitle "Contexto deve usar titulo amigavel para degradacao em areas de floresta - bioma Amazonia"
 
   Assert-Equal (Join-UrlPath -BaseUrl "https://server/base/" -Segments @("/a/", "b")) "https://server/base/a/b" "Deve juntar segmentos de URL sem duplicar barras"
   Assert-Equal (Get-GeoServerVersionUrl -GeoServer "https://gis/geoserver") "https://gis/geoserver/rest/about/version.json" "Deve montar URL de versao GeoServer"

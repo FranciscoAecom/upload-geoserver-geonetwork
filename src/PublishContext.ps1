@@ -94,6 +94,9 @@ function Resolve-GeoServerLayerTitle {
   elseif ($Layer -match "^pol_soc_ctbp_") {
     $geoServerLayerTitle = Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName $Layer
   }
+  elseif ($Layer -match "^pol_dfaab_imb_") {
+    $geoServerLayerTitle = Get-DegradacaoFlorestaAmazoniaLayerTitle -LayerName $Layer
+  }
 
   if ([string]::IsNullOrWhiteSpace($geoServerLayerTitle)) {
     $geoServerLayerTitle = $LayerTitle

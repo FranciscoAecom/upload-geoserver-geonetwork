@@ -156,6 +156,21 @@ function Get-CensoTerritorialBasicoParametrosLayerTitle {
   return ("Censo demogr{0}fico por Setor Censit{1}rio - Par{2}metros b{3}sicos (2022)" -f $aAcute, $aAcute, $aCircumflex, $aAcute)
 }
 
+function Get-DegradacaoFlorestaAmazoniaLayerTitle {
+  param([string]$LayerName)
+
+  if ($LayerName -notmatch "^pol_dfaab_imb_\d{8}$") {
+    return $null
+  }
+
+  $aCedilla = [char]0x00E7
+  $aTilde = [char]0x00E3
+  $aAcuteUpper = [char]0x00C1
+  $oCircumflex = [char]0x00F4
+
+  return ("Degrada{0}{1}o em {2}reas de Floresta - Bioma Amaz{3}nia" -f $aCedilla, $aTilde, $aAcuteUpper, $oCircumflex)
+}
+
 function Assert-KnownLayerNaming {
   param([string]$LayerName)
 
@@ -170,5 +185,8 @@ function Assert-KnownLayerNaming {
   }
   elseif ($LayerName -match "^pol_soc_ctbp_" -and [string]::IsNullOrWhiteSpace((Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName $LayerName))) {
     Write-Warning "Nao consegui interpretar o nome da camada de censo territorial basico parametros '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
+  }
+  elseif ($LayerName -match "^pol_dfaab_imb_" -and [string]::IsNullOrWhiteSpace((Get-DegradacaoFlorestaAmazoniaLayerTitle -LayerName $LayerName))) {
+    Write-Warning "Nao consegui interpretar o nome da camada de degradacao em areas de floresta - bioma Amazonia '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
   }
 }
