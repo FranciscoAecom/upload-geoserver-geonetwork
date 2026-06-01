@@ -108,7 +108,7 @@ try {
   Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_brasil_20260514") $expectedAutosInfracaoBrasilTitle "Deve montar titulo de autos de infracao Brasil"
   Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_bbox_brasil_20260514") $expectedAutosInfracaoBboxTitle "Deve montar titulo de autos de infracao com bbox Brasil"
   Assert-Equal (Get-SetorCensitarioLayerTitle -LayerName "pol_loc_cse_20241114") $expectedSetorCensitarioTitle "Deve montar titulo de setor censitario"
-  Assert-Equal (Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName "pol_loc_ctbp_20260520") $expectedCtbpTitle "Deve montar titulo de censo territorial basico parametros"
+  Assert-Equal (Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName "pol_soc_ctbp_20260520") $expectedCtbpTitle "Deve montar titulo de censo territorial basico parametros"
 
   $configPath = Join-Path $tempRoot "test.psd1"
   Set-Content -LiteralPath $configPath -Value @"
@@ -303,7 +303,7 @@ try {
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_pcd_enov_20260514" -LayerTitle "Titulo XML") $expectedAutosInfracaoTitle "Contexto deve usar titulo amigavel para autos de infracao"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_pcd_enov_brasil_20260514" -LayerTitle "Titulo XML") $expectedAutosInfracaoBrasilTitle "Contexto deve usar titulo amigavel para autos de infracao Brasil"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_loc_cse_20241114" -LayerTitle "Titulo XML") $expectedSetorCensitarioTitle "Contexto deve usar titulo amigavel para setor censitario"
-  Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_loc_ctbp_20260520" -LayerTitle "Titulo XML") $expectedCtbpTitle "Contexto deve usar titulo amigavel para censo territorial basico parametros"
+  Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_soc_ctbp_20260520" -LayerTitle "Titulo XML") $expectedCtbpTitle "Contexto deve usar titulo amigavel para censo territorial basico parametros"
 
   Assert-Equal (Join-UrlPath -BaseUrl "https://server/base/" -Segments @("/a/", "b")) "https://server/base/a/b" "Deve juntar segmentos de URL sem duplicar barras"
   Assert-Equal (Get-GeoServerVersionUrl -GeoServer "https://gis/geoserver") "https://gis/geoserver/rest/about/version.json" "Deve montar URL de versao GeoServer"

@@ -91,7 +91,7 @@ function Resolve-GeoServerLayerTitle {
   elseif ($Layer -match "^pol_loc_cse_") {
     $geoServerLayerTitle = Get-SetorCensitarioLayerTitle -LayerName $Layer
   }
-  elseif ($Layer -match "^pol_loc_ctbp_") {
+  elseif ($Layer -match "^pol_soc_ctbp_") {
     $geoServerLayerTitle = Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName $Layer
   }
 

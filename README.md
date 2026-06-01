@@ -121,15 +121,15 @@ Para bases de Censo demografico por Setor Censitario - Parametros basicos
 (2022), o script reconhece o padrao:
 
 ```text
-pol_loc_ctbp_AAAAMMDD
+pol_soc_ctbp_AAAAMMDD
 ```
 
 Exemplo:
 
 ```text
-Store: pol_loc_ctbp_20260520
-Layer: pol_loc_ctbp_20260520
-Style: sld_loc_ctbp_20260520
+Store: pol_soc_ctbp_20260520
+Layer: pol_soc_ctbp_20260520
+Style: sld_soc_ctbp_20260520
 ```
 
 Esse nome gera o titulo amigavel no GeoServer:

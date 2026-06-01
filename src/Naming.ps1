@@ -146,7 +146,7 @@ function Get-SetorCensitarioLayerTitle {
 function Get-CensoTerritorialBasicoParametrosLayerTitle {
   param([string]$LayerName)
 
-  if ($LayerName -notmatch "^pol_loc_ctbp_\d{8}$") {
+  if ($LayerName -notmatch "^pol_soc_ctbp_\d{8}$") {
     return $null
   }
 
@@ -168,7 +168,7 @@ function Assert-KnownLayerNaming {
   elseif ($LayerName -match "^pol_loc_cse_" -and [string]::IsNullOrWhiteSpace((Get-SetorCensitarioLayerTitle -LayerName $LayerName))) {
     Write-Warning "Nao consegui interpretar o nome da camada de setor censitario '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
   }
-  elseif ($LayerName -match "^pol_loc_ctbp_" -and [string]::IsNullOrWhiteSpace((Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName $LayerName))) {
+  elseif ($LayerName -match "^pol_soc_ctbp_" -and [string]::IsNullOrWhiteSpace((Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName $LayerName))) {
     Write-Warning "Nao consegui interpretar o nome da camada de censo territorial basico parametros '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
   }
 }
