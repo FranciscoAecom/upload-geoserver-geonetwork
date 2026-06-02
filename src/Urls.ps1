@@ -145,6 +145,15 @@ function Get-GeoNetworkRecordsImportUrls {
   )
 }
 
+function Get-GeoNetworkRecordSharingUrl {
+  param(
+    [string]$Catalog,
+    [string]$MetadataUuid
+  )
+
+  return Join-UrlPath -BaseUrl $Catalog -Segments @("srv", "api", "records", $MetadataUuid, "sharing")
+}
+
 function Get-GeoNetworkLegacyImportUrls {
   param([string]$Catalog)
 

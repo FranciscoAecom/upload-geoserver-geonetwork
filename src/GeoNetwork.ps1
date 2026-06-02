@@ -86,6 +86,66 @@ function Assert-GeoNetworkModernImportSucceeded {
   }
 }
 
+function New-GeoNetworkGroupEditingSharingJson {
+  param([string]$CatalogGroup)
+
+  return @{
+    clear = $false
+    privileges = @(
+      @{
+        group = [int]$CatalogGroup
+        operations = @{
+          view = $true
+          editing = $true
+          download = $true
+          notify = $true
+          dynamic = $true
+        }
+      }
+    )
+  } | ConvertTo-Json -Depth 5 -Compress
+}
+
+function Set-GeoNetworkGroupEditingPrivilege {
+  param(
+    [string]$Catalog,
+    [string]$MetadataUuid,
+    [string]$CatalogGroup,
+    [string]$CatalogAuth,
+    [string]$XsrfToken,
+    [string]$CookieJar,
+    [bool]$DryRun = $false
+  )
+
+  if ([string]::IsNullOrWhiteSpace($MetadataUuid)) {
+    Write-Warning "Nao foi possivel identificar o UUID do XML; permissao de edicao do grupo nao foi reforcada."
+    return
+  }
+
+  $sharingUrl = Get-GeoNetworkRecordSharingUrl -Catalog $Catalog -MetadataUuid $MetadataUuid
+  $sharingJson = New-GeoNetworkGroupEditingSharingJson -CatalogGroup $CatalogGroup
+
+  Write-Host ""
+  Write-Host "Garantindo permissao de edicao do grupo $CatalogGroup no GeoNetwork..."
+  Invoke-Curl -Arguments @(
+    "--fail-with-body",
+    "--show-error",
+    "--location",
+    "--retry", "0",
+    "--connect-timeout", "60",
+    "--max-time", "0",
+    "--request", "PUT",
+    "--cookie-jar", $CookieJar,
+    "--cookie", $CookieJar,
+    "--header", "Authorization: Basic $CatalogAuth",
+    "--header", "X-XSRF-TOKEN: $XsrfToken",
+    "--header", "Accept: application/json",
+    "--header", "Content-Type: application/json",
+    "--data-raw", $sharingJson,
+    $sharingUrl
+  ) -DryRun $DryRun
+}
+
 function Import-GeoNetworkMetadata {
   param(
     [string]$Catalog,
@@ -151,6 +211,7 @@ function Import-GeoNetworkMetadata {
       throw "Nao foi possivel obter XSRF-TOKEN do GeoNetwork em $(Get-GeoNetworkMeUrl -Catalog $Catalog)."
     }
 
+    $metadataUuid = Get-MetadataUuid -XmlPath $metadataUploadPath
     $recordsImportUrls = Get-GeoNetworkRecordsImportUrls -Catalog $Catalog -CatalogGroup $CatalogGroup -CatalogCategory $CatalogCategory
 
     try {
@@ -239,6 +300,15 @@ function Import-GeoNetworkMetadata {
         throw "Nao foi possivel importar no GeoNetwork. Tentativas: $($legacyErrors -join ' | ')"
       }
     }
+
+    Set-GeoNetworkGroupEditingPrivilege `
+      -Catalog $Catalog `
+      -MetadataUuid $metadataUuid `
+      -CatalogGroup $CatalogGroup `
+      -CatalogAuth $catalogAuth `
+      -XsrfToken $xsrfToken `
+      -CookieJar $cookieJar.FullName `
+      -DryRun $DryRun
   }
   finally {
     Remove-Item -LiteralPath $cookieJar.FullName -Force -ErrorAction SilentlyContinue

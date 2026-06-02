@@ -316,6 +316,7 @@ try {
   Assert-Equal (Get-GeoServerDataUploadUrl -GeoServer "https://gis/geoserver" -Workspace "gold" -DataEndpoint "datastores" -Store "store1" -DataType "gpkg") "https://gis/geoserver/rest/workspaces/gold/datastores/store1/file.gpkg?configure=all" "Deve montar URL de upload GeoServer"
   Assert-Equal (Get-GeoServerLayerJsonUrl -GeoServer "https://gis/geoserver" -Workspace "gold" -Layer "layer1") "https://gis/geoserver/rest/layers/gold:layer1.json" "Deve montar URL JSON da camada"
   Assert-Equal (Get-GeoNetworkMeUrl -Catalog "https://catalog") "https://catalog/srv/api/me" "Deve montar URL /me do GeoNetwork"
+  Assert-Equal (Get-GeoNetworkRecordSharingUrl -Catalog "https://catalog" -MetadataUuid "uuid-teste") "https://catalog/srv/api/records/uuid-teste/sharing" "Deve montar URL de compartilhamento do registro"
   $recordsImportUrls = Get-GeoNetworkRecordsImportUrls -Catalog "https://catalog" -CatalogGroup "2" -CatalogCategory "3"
   Assert-Equal $recordsImportUrls[0] "https://catalog/srv/api/records?metadataType=METADATA&uuidProcessing=OVERWRITE&group=2&category=3&rejectIfInvalid=false&publishToAll=true&transformWith=_none_&schema=iso19139&allowEditGroupMembers=true" "Deve montar URL moderna de importacao"
   Assert-Equal $recordsImportUrls[1] "https://catalog/srv/api/records/?metadataType=METADATA&uuidProcessing=OVERWRITE&group=2&category=3&rejectIfInvalid=false&publishToAll=true&transformWith=_none_&schema=iso19139&allowEditGroupMembers=true" "Deve manter variante moderna com barra final"
@@ -380,6 +381,10 @@ try {
   Assert-Throws { Assert-GeoNetworkModernImportSucceeded -Output '{"errors":["falha"]}' } "Deve rejeitar relatorio com erros"
   Assert-GeoNetworkModernImportSucceeded -Output '{"success":true,"records":[{"uuid":"abc"}]}'
   $script:testCount++
+  $sharing = New-GeoNetworkGroupEditingSharingJson -CatalogGroup "2" | ConvertFrom-Json
+  Assert-Equal $sharing.clear $false "Compartilhamento nao deve limpar privilegios existentes"
+  Assert-Equal $sharing.privileges[0].group 2 "Compartilhamento deve usar grupo configurado"
+  Assert-Equal $sharing.privileges[0].operations.editing $true "Compartilhamento deve garantir edicao pelo grupo"
 
   Write-Host "UNIT TESTS OK ($script:testCount)"
 }
