@@ -124,26 +124,35 @@ function Set-GeoNetworkGroupEditingPrivilege {
 
   $sharingUrl = Get-GeoNetworkRecordSharingUrl -Catalog $Catalog -MetadataUuid $MetadataUuid
   $sharingJson = New-GeoNetworkGroupEditingSharingJson -CatalogGroup $CatalogGroup
+  $sharingBody = New-TemporaryFile
 
-  Write-Host ""
-  Write-Host "Garantindo permissao de edicao do grupo $CatalogGroup no GeoNetwork..."
-  Invoke-Curl -Arguments @(
-    "--fail-with-body",
-    "--show-error",
-    "--location",
-    "--retry", "0",
-    "--connect-timeout", "60",
-    "--max-time", "0",
-    "--request", "PUT",
-    "--cookie-jar", $CookieJar,
-    "--cookie", $CookieJar,
-    "--header", "Authorization: Basic $CatalogAuth",
-    "--header", "X-XSRF-TOKEN: $XsrfToken",
-    "--header", "Accept: application/json",
-    "--header", "Content-Type: application/json",
-    "--data-raw", $sharingJson,
-    $sharingUrl
-  ) -DryRun $DryRun
+  try {
+    $utf8NoBom = New-Object Text.UTF8Encoding $false
+    [IO.File]::WriteAllText($sharingBody.FullName, $sharingJson, $utf8NoBom)
+
+    Write-Host ""
+    Write-Host "Garantindo permissao de edicao do grupo $CatalogGroup no GeoNetwork..."
+    Invoke-Curl -Arguments @(
+      "--fail-with-body",
+      "--show-error",
+      "--location",
+      "--retry", "0",
+      "--connect-timeout", "60",
+      "--max-time", "0",
+      "--request", "PUT",
+      "--cookie-jar", $CookieJar,
+      "--cookie", $CookieJar,
+      "--header", "Authorization: Basic $CatalogAuth",
+      "--header", "X-XSRF-TOKEN: $XsrfToken",
+      "--header", "Accept: application/json",
+      "--header", "Content-Type: application/json",
+      "--data-binary", "@$($sharingBody.FullName)",
+      $sharingUrl
+    ) -DryRun $DryRun
+  }
+  finally {
+    Remove-Item -LiteralPath $sharingBody.FullName -Force -ErrorAction SilentlyContinue
+  }
 }
 
 function Import-GeoNetworkMetadata {
