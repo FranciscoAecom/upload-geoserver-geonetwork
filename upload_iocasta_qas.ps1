@@ -1,5 +1,6 @@
 param(
-  [string]$Folder = "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\soc\localidades_populacao_urbana\AECOM\20260602\00",
+  [Parameter(Mandatory = $true)]
+  [string]$Folder,
   [string]$GeoServer = "https://gisqas.iocasta.com.br/geoserver",
   [string]$Catalog = "https://catalogqas.iocasta.com.br",
   [string]$Workspace = "gold",

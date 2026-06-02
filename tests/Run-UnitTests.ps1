@@ -103,6 +103,8 @@ try {
   $expectedDfaabTitle = ("Degrada{0}{1}o em {2}reas de Floresta - Bioma Amaz{3}nia" -f $cCedilla, $aTilde, $aAcuteUpper, ([char]0x00F4))
   $expectedUfpTitle = ("{0}rea urbana das sedes municipais com popula{1}{2}o residente" -f $aAcuteUpper, $cCedilla, $aTilde)
   $expectedUplTitle = ("Pontos oficiais das sedes municipais e capitais com popula{0}{1}o urbana" -f $cCedilla, $aTilde)
+  $validUtf8Title = ("Popula{0}{1}o urbana" -f $cCedilla, $aTilde)
+  $mojibakeTitle = "Popula" + [char]0x00C3 + [char]0x00A7 + [char]0x00C3 + [char]0x00A3 + "o urbana"
 
   Assert-Equal (Get-StateNameFromLayer -LayerName "pol_pcd_app_car_ba_20260301") "Bahia" "Deve identificar UF pelo nome da camada"
   Assert-Equal (Get-AppCarLayerTitle -LayerName "pol_pcd_app_car_ba_20260301") $expectedAppCarTitle "Deve montar titulo APP CAR"
@@ -115,6 +117,10 @@ try {
   Assert-Equal (Get-DegradacaoFlorestaAmazoniaLayerTitle -LayerName "pol_dfaab_imb_20260601") $expectedDfaabTitle "Deve montar titulo de degradacao em areas de floresta - bioma Amazonia"
   Assert-Equal (Get-ManchaUrbanaPopulacaoLayerTitle -LayerName "pol_soc_ufp_20260602") $expectedUfpTitle "Deve montar titulo de mancha urbana com populacao residente"
   Assert-Equal (Get-LocalidadesPopulacaoUrbanaLayerTitle -LayerName "pnt_soc_upl_20260602") $expectedUplTitle "Deve montar titulo de localidades com populacao urbana"
+  Assert-Equal (Get-FriendlyLayerTitle -LayerName "pnt_soc_upl_20260602") $expectedUplTitle "Catalogo deve resolver titulo amigavel"
+  Assert-Equal (Get-FriendlyLayerTitle -LayerName "camada_sem_regra") $null "Catalogo deve retornar nulo para camada desconhecida"
+  Assert-Equal (Repair-Mojibake -Text $validUtf8Title) $validUtf8Title "Reparo de mojibake deve preservar UTF-8 valido"
+  Assert-Equal (Repair-Mojibake -Text $mojibakeTitle) $validUtf8Title "Reparo de mojibake deve corrigir texto Windows-1252 interpretado como UTF-8"
 
   $configPath = Join-Path $tempRoot "test.psd1"
   Set-Content -LiteralPath $configPath -Value @"
@@ -163,6 +169,9 @@ try {
 
   Assert-Equal (Get-MetadataTitle -XmlPath $xmlPath) "Titulo Teste" "Deve ler titulo do XML"
   Assert-Equal (Get-MetadataUuid -XmlPath $xmlPath) "uuid-teste" "Deve ler UUID do XML"
+  New-TestMetadataXml -Path $xmlPath -Title $validUtf8Title
+  Assert-Equal (Get-MetadataTitle -XmlPath $xmlPath) $validUtf8Title "Titulo XML deve preservar UTF-8 valido"
+  New-TestMetadataXml -Path $xmlPath
 
   $complexSldPath = Join-Path $tempRoot "complex.sld"
   $complexSld = @'
@@ -388,6 +397,7 @@ try {
   Assert-Equal $sharing.clear $false "Compartilhamento nao deve limpar privilegios existentes"
   Assert-Equal $sharing.privileges[0].group 2 "Compartilhamento deve usar grupo configurado"
   Assert-Equal $sharing.privileges[0].operations.editing $true "Compartilhamento deve garantir edicao pelo grupo"
+  Assert-Equal (Invoke-CurlCapture -Arguments @("--version") -DryRun $true -DryRunOutput "saida-teste") "saida-teste" "Executor curl consolidado deve preservar saida simulada"
 
   Write-Host "UNIT TESTS OK ($script:testCount)"
 }

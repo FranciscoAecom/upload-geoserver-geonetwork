@@ -60,7 +60,19 @@ function Repair-Mojibake {
   }
 
   $windows1252 = [Text.Encoding]::GetEncoding(1252)
-  return [Text.Encoding]::UTF8.GetString($windows1252.GetBytes($Text))
+  $candidate = [Text.Encoding]::UTF8.GetString($windows1252.GetBytes($Text))
+  if ($candidate.Contains([char]0xFFFD)) {
+    return $Text
+  }
+
+  $markers = @([char]0x00C2, [char]0x00C3, [char]0x00E2)
+  $originalMarkerCount = @($Text.ToCharArray() | Where-Object { $_ -in $markers }).Count
+  $candidateMarkerCount = @($candidate.ToCharArray() | Where-Object { $_ -in $markers }).Count
+  if ($candidateMarkerCount -ge $originalMarkerCount) {
+    return $Text
+  }
+
+  return $candidate
 }
 
 function ConvertTo-XmlEscapedText {
@@ -179,44 +191,11 @@ function Get-CurlDisplayArguments {
   return $displayArguments
 }
 
-function Invoke-Curl {
-  param(
-    [string[]]$Arguments,
-    [bool]$DryRun = $false
-  )
-
-  if ($script:SkipCurlCertificateRevocationCheck) {
-    $Arguments = Add-CurlNoRevokeArgument -Arguments $Arguments
-  }
-
-  $displayArguments = Get-CurlDisplayArguments -Arguments $Arguments
-
-  Write-Host ""
-  Write-Host "curl.exe $($displayArguments -join ' ')"
-  if ($DryRun) {
-    Write-Host "DRY-RUN: curl.exe nao executado."
-    return
-  }
-
-  & curl.exe @Arguments
-  if ($LASTEXITCODE -eq 35 -and $Arguments -notcontains "--ssl-no-revoke") {
-    Write-Warning "curl.exe falhou com erro TLS/Schannel 35; tentando novamente com --ssl-no-revoke."
-    $Arguments = Add-CurlNoRevokeArgument -Arguments $Arguments
-    $displayArguments = Get-CurlDisplayArguments -Arguments $Arguments
-    Write-Host ""
-    Write-Host "curl.exe $($displayArguments -join ' ')"
-    & curl.exe @Arguments
-  }
-
-  if ($LASTEXITCODE -ne 0) {
-    throw "curl.exe falhou com exit code $LASTEXITCODE."
-  }
-}
-
-function Invoke-CurlCapture {
+function Invoke-CurlInternal {
   param(
     [string[]]$Arguments,
     [bool]$DryRun = $false,
+    [bool]$CaptureOutput = $false,
     [string]$DryRunOutput = "{}"
   )
 
@@ -230,28 +209,62 @@ function Invoke-CurlCapture {
   Write-Host "curl.exe $($displayArguments -join ' ')"
   if ($DryRun) {
     Write-Host "DRY-RUN: curl.exe nao executado."
-    return $DryRunOutput
+    if ($CaptureOutput) {
+      return $DryRunOutput
+    }
+    return
   }
 
-  $output = & curl.exe @Arguments
-  if ($LASTEXITCODE -eq 35 -and $Arguments -notcontains "--ssl-no-revoke") {
+  $output = @(& curl.exe @Arguments)
+  $exitCode = $LASTEXITCODE
+  if ($exitCode -eq 35 -and $Arguments -notcontains "--ssl-no-revoke") {
     Write-Warning "curl.exe falhou com erro TLS/Schannel 35; tentando novamente com --ssl-no-revoke."
     $Arguments = Add-CurlNoRevokeArgument -Arguments $Arguments
     $displayArguments = Get-CurlDisplayArguments -Arguments $Arguments
     Write-Host ""
     Write-Host "curl.exe $($displayArguments -join ' ')"
-    $output = & curl.exe @Arguments
+    $output = @(& curl.exe @Arguments)
+    $exitCode = $LASTEXITCODE
   }
 
-  if ($LASTEXITCODE -ne 0) {
-    $body = ($output -join "`n")
+  $body = ($output -join "`n")
+  if ($exitCode -ne 0) {
     if (-not [string]::IsNullOrWhiteSpace($body)) {
-      throw "curl.exe falhou com exit code $LASTEXITCODE. Resposta: $body"
+      throw "curl.exe falhou com exit code $exitCode. Resposta: $body"
     }
-    throw "curl.exe falhou com exit code $LASTEXITCODE."
+    throw "curl.exe falhou com exit code $exitCode."
   }
 
-  return ($output -join "`n")
+  if ($CaptureOutput) {
+    return $body
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($body)) {
+    Write-Host $body
+  }
+}
+
+function Invoke-Curl {
+  param(
+    [string[]]$Arguments,
+    [bool]$DryRun = $false
+  )
+
+  Invoke-CurlInternal -Arguments $Arguments -DryRun $DryRun
+}
+
+function Invoke-CurlCapture {
+  param(
+    [string[]]$Arguments,
+    [bool]$DryRun = $false,
+    [string]$DryRunOutput = "{}"
+  )
+
+  return Invoke-CurlInternal `
+    -Arguments $Arguments `
+    -DryRun $DryRun `
+    -CaptureOutput $true `
+    -DryRunOutput $DryRunOutput
 }
 
 function Get-CookieValue {

@@ -72,37 +72,7 @@ function Resolve-GeoServerLayerTitle {
     [string]$LayerTitle
   )
 
-  $geoServerLayerTitle = $null
-  if ($Layer -match "_app_car_") {
-    $geoServerLayerTitle = Get-AppCarLayerTitle -LayerName $Layer
-  }
-  elseif ($Layer -match "_sa_car_") {
-    $geoServerLayerTitle = Get-SaCarLayerTitle -LayerName $Layer
-  }
-  elseif ($Layer -match "_ur_car_") {
-    $geoServerLayerTitle = Get-UrCarLayerTitle -LayerName $Layer
-  }
-  elseif ($Layer -match "^rst_imb_lulc_") {
-    $geoServerLayerTitle = Get-ImbLulcLayerTitle -LayerName $Layer
-  }
-  elseif ($Layer -match "^pnt_pcd_enov") {
-    $geoServerLayerTitle = Get-AutosInfracaoLayerTitle -LayerName $Layer
-  }
-  elseif ($Layer -match "^pol_loc_cse_") {
-    $geoServerLayerTitle = Get-SetorCensitarioLayerTitle -LayerName $Layer
-  }
-  elseif ($Layer -match "^pol_soc_ctbp_") {
-    $geoServerLayerTitle = Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName $Layer
-  }
-  elseif ($Layer -match "^pol_dfaab_imb_") {
-    $geoServerLayerTitle = Get-DegradacaoFlorestaAmazoniaLayerTitle -LayerName $Layer
-  }
-  elseif ($Layer -match "^pol_soc_ufp_") {
-    $geoServerLayerTitle = Get-ManchaUrbanaPopulacaoLayerTitle -LayerName $Layer
-  }
-  elseif ($Layer -match "^pnt_soc_upl_") {
-    $geoServerLayerTitle = Get-LocalidadesPopulacaoUrbanaLayerTitle -LayerName $Layer
-  }
+  $geoServerLayerTitle = Get-FriendlyLayerTitle -LayerName $Layer
 
   if ([string]::IsNullOrWhiteSpace($geoServerLayerTitle)) {
     $geoServerLayerTitle = $LayerTitle

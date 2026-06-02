@@ -198,28 +198,71 @@ function Get-LocalidadesPopulacaoUrbanaLayerTitle {
   return ("Pontos oficiais das sedes municipais e capitais com popula{0}{1}o urbana" -f $cCedilla, $aTilde)
 }
 
+function Get-LayerNamingRules {
+  return @(
+    [pscustomobject]@{ Match = "_app_car_"; Resolver = "Get-AppCarLayerTitle" }
+    [pscustomobject]@{ Match = "_sa_car_"; Resolver = "Get-SaCarLayerTitle" }
+    [pscustomobject]@{ Match = "_ur_car_"; Resolver = "Get-UrCarLayerTitle" }
+    [pscustomobject]@{
+      Match = "^rst_imb_lulc_"
+      Resolver = "Get-ImbLulcLayerTitle"
+      Warning = "Nao consegui interpretar ano/colecao pelo nome da camada IMB LULC '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
+    }
+    [pscustomobject]@{
+      Match = "^pnt_pcd_enov"
+      Resolver = "Get-AutosInfracaoLayerTitle"
+      Warning = "Nao consegui interpretar o nome da camada de autos de infracao '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
+    }
+    [pscustomobject]@{
+      Match = "^pol_loc_cse_"
+      Resolver = "Get-SetorCensitarioLayerTitle"
+      Warning = "Nao consegui interpretar o nome da camada de setor censitario '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
+    }
+    [pscustomobject]@{
+      Match = "^pol_soc_ctbp_"
+      Resolver = "Get-CensoTerritorialBasicoParametrosLayerTitle"
+      Warning = "Nao consegui interpretar o nome da camada de censo territorial basico parametros '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
+    }
+    [pscustomobject]@{
+      Match = "^pol_dfaab_imb_"
+      Resolver = "Get-DegradacaoFlorestaAmazoniaLayerTitle"
+      Warning = "Nao consegui interpretar o nome da camada de degradacao em areas de floresta - bioma Amazonia '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
+    }
+    [pscustomobject]@{
+      Match = "^pol_soc_ufp_"
+      Resolver = "Get-ManchaUrbanaPopulacaoLayerTitle"
+      Warning = "Nao consegui interpretar o nome da camada de mancha urbana com populacao residente '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
+    }
+    [pscustomobject]@{
+      Match = "^pnt_soc_upl_"
+      Resolver = "Get-LocalidadesPopulacaoUrbanaLayerTitle"
+      Warning = "Nao consegui interpretar o nome da camada de localidades com populacao urbana '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
+    }
+  )
+}
+
+function Get-FriendlyLayerTitle {
+  param([string]$LayerName)
+
+  foreach ($rule in Get-LayerNamingRules) {
+    if ($LayerName -match $rule.Match) {
+      return & $rule.Resolver -LayerName $LayerName
+    }
+  }
+
+  return $null
+}
+
 function Assert-KnownLayerNaming {
   param([string]$LayerName)
 
-  if ($LayerName -match "^rst_imb_lulc_" -and [string]::IsNullOrWhiteSpace((Get-ImbLulcLayerTitle -LayerName $LayerName))) {
-    Write-Warning "Nao consegui interpretar ano/colecao pelo nome da camada IMB LULC '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
-  }
-  elseif ($LayerName -match "^pnt_pcd_enov" -and [string]::IsNullOrWhiteSpace((Get-AutosInfracaoLayerTitle -LayerName $LayerName))) {
-    Write-Warning "Nao consegui interpretar o nome da camada de autos de infracao '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
-  }
-  elseif ($LayerName -match "^pol_loc_cse_" -and [string]::IsNullOrWhiteSpace((Get-SetorCensitarioLayerTitle -LayerName $LayerName))) {
-    Write-Warning "Nao consegui interpretar o nome da camada de setor censitario '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
-  }
-  elseif ($LayerName -match "^pol_soc_ctbp_" -and [string]::IsNullOrWhiteSpace((Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName $LayerName))) {
-    Write-Warning "Nao consegui interpretar o nome da camada de censo territorial basico parametros '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
-  }
-  elseif ($LayerName -match "^pol_dfaab_imb_" -and [string]::IsNullOrWhiteSpace((Get-DegradacaoFlorestaAmazoniaLayerTitle -LayerName $LayerName))) {
-    Write-Warning "Nao consegui interpretar o nome da camada de degradacao em areas de floresta - bioma Amazonia '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
-  }
-  elseif ($LayerName -match "^pol_soc_ufp_" -and [string]::IsNullOrWhiteSpace((Get-ManchaUrbanaPopulacaoLayerTitle -LayerName $LayerName))) {
-    Write-Warning "Nao consegui interpretar o nome da camada de mancha urbana com populacao residente '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
-  }
-  elseif ($LayerName -match "^pnt_soc_upl_" -and [string]::IsNullOrWhiteSpace((Get-LocalidadesPopulacaoUrbanaLayerTitle -LayerName $LayerName))) {
-    Write-Warning "Nao consegui interpretar o nome da camada de localidades com populacao urbana '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
+  foreach ($rule in Get-LayerNamingRules) {
+    if ($LayerName -match $rule.Match) {
+      $layerTitle = & $rule.Resolver -LayerName $LayerName
+      if ([string]::IsNullOrWhiteSpace($layerTitle) -and -not [string]::IsNullOrWhiteSpace($rule.Warning)) {
+        Write-Warning ($rule.Warning -f $LayerName)
+      }
+      return
+    }
   }
 }

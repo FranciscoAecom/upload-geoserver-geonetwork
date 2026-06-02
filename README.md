@@ -142,7 +142,7 @@ Censo demografico por Setor Censitario - Parametros basicos (2022)
 
 | Parametro | Padrao | Descricao |
 | --- | --- | --- |
-| `Folder` | pasta local APP CAR BA | Pasta que contem o `.gpkg`, `.rst` ou `.tif`, `.sld` e `.xml`. |
+| `Folder` | obrigatorio | Pasta que contem o `.gpkg`, `.rst` ou `.tif`, `.sld` e `.xml`. Deve ser informada em cada execucao. |
 | `GeoServer` | `https://gisqas.iocasta.com.br/geoserver` | URL base do GeoServer. |
 | `Catalog` | `https://catalogqas.iocasta.com.br` | URL base do GeoNetwork. |
 | `Workspace` | `gold` | Workspace de destino no GeoServer. |
@@ -257,4 +257,5 @@ Para executar os testes locais:
 
 - O script imprime os comandos `curl.exe`, mascarando headers sensiveis como `Authorization` e `X-XSRF-TOKEN`.
 - Arquivos temporarios sao criados durante a execucao e removidos ao final.
+- Informe `-Folder` em cada execucao. O repositorio nao guarda o caminho da ultima base publicada.
 - Antes de executar para outro ambiente, revise `GeoServer`, `Catalog`, `Workspace`, `CatalogGroup` e `CatalogCategory`. Use `Store` e `Layer` somente quando o nome publicado precisar ser diferente do arquivo de dados.
