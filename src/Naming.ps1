@@ -171,6 +171,20 @@ function Get-DegradacaoFlorestaAmazoniaLayerTitle {
   return ("Degrada{0}{1}o em {2}reas de Floresta - Bioma Amaz{3}nia" -f $aCedilla, $aTilde, $aAcuteUpper, $oCircumflex)
 }
 
+function Get-ManchaUrbanaPopulacaoLayerTitle {
+  param([string]$LayerName)
+
+  if ($LayerName -notmatch "^pol_soc_ufp_\d{8}$") {
+    return $null
+  }
+
+  $aAcuteUpper = [char]0x00C1
+  $cCedilla = [char]0x00E7
+  $aTilde = [char]0x00E3
+
+  return ("{0}rea urbana das sedes municipais com popula{1}{2}o residente" -f $aAcuteUpper, $cCedilla, $aTilde)
+}
+
 function Assert-KnownLayerNaming {
   param([string]$LayerName)
 
@@ -188,5 +202,8 @@ function Assert-KnownLayerNaming {
   }
   elseif ($LayerName -match "^pol_dfaab_imb_" -and [string]::IsNullOrWhiteSpace((Get-DegradacaoFlorestaAmazoniaLayerTitle -LayerName $LayerName))) {
     Write-Warning "Nao consegui interpretar o nome da camada de degradacao em areas de floresta - bioma Amazonia '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
+  }
+  elseif ($LayerName -match "^pol_soc_ufp_" -and [string]::IsNullOrWhiteSpace((Get-ManchaUrbanaPopulacaoLayerTitle -LayerName $LayerName))) {
+    Write-Warning "Nao consegui interpretar o nome da camada de mancha urbana com populacao residente '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
   }
 }
