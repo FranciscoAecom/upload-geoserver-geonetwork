@@ -106,94 +106,31 @@ function New-GeoNetworkGroupEditingSharingJson {
   } | ConvertTo-Json -Depth 5 -Compress
 }
 
-function Set-GeoNetworkGroupEditingPrivilege {
+function New-GeoNetworkSession {
   param(
     [string]$Catalog,
-    [string]$MetadataUuid,
-    [string]$CatalogGroup,
-    [string]$CatalogAuth,
-    [string]$XsrfToken,
-    [string]$CookieJar,
-    [bool]$DryRun = $false
-  )
-
-  if ([string]::IsNullOrWhiteSpace($MetadataUuid)) {
-    Write-Warning "Nao foi possivel identificar o UUID do XML; permissao de edicao do grupo nao foi reforcada."
-    return
-  }
-
-  $sharingUrl = Get-GeoNetworkRecordSharingUrl -Catalog $Catalog -MetadataUuid $MetadataUuid
-  $sharingJson = New-GeoNetworkGroupEditingSharingJson -CatalogGroup $CatalogGroup
-  $sharingBody = New-TemporaryFile
-
-  try {
-    $utf8NoBom = New-Object Text.UTF8Encoding $false
-    [IO.File]::WriteAllText($sharingBody.FullName, $sharingJson, $utf8NoBom)
-
-    Write-Host ""
-    Write-Host "Garantindo permissao de edicao do grupo $CatalogGroup no GeoNetwork..."
-    Invoke-Curl -Arguments @(
-      "--fail-with-body",
-      "--show-error",
-      "--location",
-      "--retry", "0",
-      "--connect-timeout", "60",
-      "--max-time", "0",
-      "--request", "PUT",
-      "--cookie-jar", $CookieJar,
-      "--cookie", $CookieJar,
-      "--header", "Authorization: Basic $CatalogAuth",
-      "--header", "X-XSRF-TOKEN: $XsrfToken",
-      "--header", "Accept: application/json",
-      "--header", "Content-Type: application/json",
-      "--data-binary", "@$($sharingBody.FullName)",
-      $sharingUrl
-    ) -DryRun $DryRun
-  }
-  finally {
-    Remove-Item -LiteralPath $sharingBody.FullName -Force -ErrorAction SilentlyContinue
-  }
-}
-
-function Import-GeoNetworkMetadata {
-  param(
-    [string]$Catalog,
-    [string]$XmlPath,
-    [string]$DataDictionaryBaseUrl,
-    [hashtable]$AttributeTypes,
-    [string]$QualitySourceUrl,
-    [string]$CatalogGroup,
-    [string]$CatalogCategory,
     [pscredential]$GeoCredential,
     [bool]$SameCredentialForCatalog,
     [bool]$DryRun = $false
   )
 
-  Write-Host ""
-  Write-Host "5/5 - Importando XML no catalogo GeoNetwork..."
   Write-Host "Abrindo sessao e capturando token XSRF do GeoNetwork..."
-  $metadataUploadPath = New-MetadataXmlWithDataDictionaryLink -XmlPath $XmlPath -DataDictionaryBaseUrl $DataDictionaryBaseUrl -AttributeTypes $AttributeTypes -QualitySourceUrl $QualitySourceUrl
   $catalogCredential = $null
   $catalogAuth = "DRYRUN"
   if ($DryRun) {
     Write-Host "DRY-RUN: credenciais do Catalogo/GeoNetwork nao solicitadas."
   }
   else {
-    if ($SameCredentialForCatalog) {
-      if ($null -eq $GeoCredential) {
-        $catalogCredential = Get-Credential -Message "Credenciais do Catalogo QAS / GeoNetwork"
-      }
-      else {
-        $catalogCredential = $GeoCredential
-      }
+    if ($SameCredentialForCatalog -and $null -ne $GeoCredential) {
+      $catalogCredential = $GeoCredential
     }
     else {
       $catalogCredential = Get-Credential -Message "Credenciais do Catalogo QAS / GeoNetwork"
     }
     $catalogAuth = ConvertTo-BasicAuth -Credential $catalogCredential
   }
-  $cookieJar = New-TemporaryFile
 
+  $cookieJar = New-TemporaryFile
   try {
     Invoke-Curl -Arguments @(
       "--fail-with-body",
@@ -220,6 +157,85 @@ function Import-GeoNetworkMetadata {
       throw "Nao foi possivel obter XSRF-TOKEN do GeoNetwork em $(Get-GeoNetworkMeUrl -Catalog $Catalog)."
     }
 
+    return [pscustomobject]@{
+      Auth = $catalogAuth
+      XsrfToken = $xsrfToken
+      CookieJar = $cookieJar.FullName
+    }
+  }
+  catch {
+    Remove-Item -LiteralPath $cookieJar.FullName -Force -ErrorAction SilentlyContinue
+    throw
+  }
+}
+
+function Remove-GeoNetworkSession {
+  param([pscustomobject]$Session)
+
+  if ($null -ne $Session -and -not [string]::IsNullOrWhiteSpace($Session.CookieJar)) {
+    Remove-Item -LiteralPath $Session.CookieJar -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Set-GeoNetworkGroupEditingPrivilege {
+  param(
+    [string]$Catalog,
+    [string]$MetadataUuid,
+    [string]$CatalogGroup,
+    [string]$CatalogAuth,
+    [string]$XsrfToken,
+    [string]$CookieJar,
+    [bool]$DryRun = $false
+  )
+
+  if ([string]::IsNullOrWhiteSpace($MetadataUuid)) {
+    Write-Warning "Nao foi possivel identificar o UUID do XML; permissao de edicao do grupo nao foi reforcada."
+    return
+  }
+
+  $sharingUrl = Get-GeoNetworkRecordSharingUrl -Catalog $Catalog -MetadataUuid $MetadataUuid
+  $sharingJson = New-GeoNetworkGroupEditingSharingJson -CatalogGroup $CatalogGroup
+
+  Write-Host ""
+  Write-Host "Garantindo permissao de edicao do grupo $CatalogGroup no GeoNetwork..."
+  Invoke-CurlJson -JsonBody $sharingJson -Arguments @(
+    "--fail-with-body",
+    "--show-error",
+    "--location",
+    "--retry", "0",
+    "--connect-timeout", "60",
+    "--max-time", "0",
+    "--request", "PUT",
+    "--cookie-jar", $CookieJar,
+    "--cookie", $CookieJar,
+    "--header", "Authorization: Basic $CatalogAuth",
+    "--header", "X-XSRF-TOKEN: $XsrfToken",
+    "--header", "Accept: application/json",
+    $sharingUrl
+  ) -DryRun $DryRun
+}
+
+function Import-GeoNetworkMetadata {
+  param(
+    [string]$Catalog,
+    [string]$XmlPath,
+    [string]$DataDictionaryBaseUrl,
+    [hashtable]$AttributeTypes,
+    [string]$QualitySourceUrl,
+    [string]$CatalogGroup,
+    [string]$CatalogCategory,
+    [pscredential]$GeoCredential,
+    [bool]$SameCredentialForCatalog,
+    [bool]$DryRun = $false
+  )
+
+  Write-PublishStep -Step "5/5" -Message "Importando XML no catalogo GeoNetwork..."
+  $metadataUploadPath = New-MetadataXmlWithDataDictionaryLink -XmlPath $XmlPath -DataDictionaryBaseUrl $DataDictionaryBaseUrl -AttributeTypes $AttributeTypes -QualitySourceUrl $QualitySourceUrl
+  $session = $null
+
+  try {
+    $session = New-GeoNetworkSession -Catalog $Catalog -GeoCredential $GeoCredential -SameCredentialForCatalog $SameCredentialForCatalog -DryRun $DryRun
+
     $metadataUuid = Get-MetadataUuid -XmlPath $metadataUploadPath
     $recordsImportUrls = Get-GeoNetworkRecordsImportUrls -Catalog $Catalog -CatalogGroup $CatalogGroup -CatalogCategory $CatalogCategory
 
@@ -242,10 +258,10 @@ function Import-GeoNetworkMetadata {
             "--connect-timeout", "60",
             "--max-time", "0",
             "--request", "POST",
-            "--cookie-jar", $cookieJar.FullName,
-            "--cookie", $cookieJar.FullName,
-            "--header", "Authorization: Basic $catalogAuth",
-            "--header", "X-XSRF-TOKEN: $xsrfToken",
+            "--cookie-jar", $session.CookieJar,
+            "--cookie", $session.CookieJar,
+            "--header", "Authorization: Basic $($session.Auth)",
+            "--header", "X-XSRF-TOKEN: $($session.XsrfToken)",
             "--header", "Accept: application/json",
             "--form", "file=@$metadataUploadPath;type=application/xml",
             $recordsImportUrl
@@ -284,10 +300,10 @@ function Import-GeoNetworkMetadata {
             "--connect-timeout", "60",
             "--max-time", "0",
             "--request", "POST",
-            "--cookie-jar", $cookieJar.FullName,
-            "--cookie", $cookieJar.FullName,
-            "--header", "Authorization: Basic $catalogAuth",
-            "--header", "X-XSRF-TOKEN: $xsrfToken",
+            "--cookie-jar", $session.CookieJar,
+            "--cookie", $session.CookieJar,
+            "--header", "Authorization: Basic $($session.Auth)",
+            "--header", "X-XSRF-TOKEN: $($session.XsrfToken)",
             "--form", "data=<$metadataUploadPath",
             "--form", "group=$CatalogGroup",
             "--form", "category=$CatalogCategory",
@@ -314,13 +330,13 @@ function Import-GeoNetworkMetadata {
       -Catalog $Catalog `
       -MetadataUuid $metadataUuid `
       -CatalogGroup $CatalogGroup `
-      -CatalogAuth $catalogAuth `
-      -XsrfToken $xsrfToken `
-      -CookieJar $cookieJar.FullName `
+      -CatalogAuth $session.Auth `
+      -XsrfToken $session.XsrfToken `
+      -CookieJar $session.CookieJar `
       -DryRun $DryRun
   }
   finally {
-    Remove-Item -LiteralPath $cookieJar.FullName -Force -ErrorAction SilentlyContinue
+    Remove-GeoNetworkSession -Session $session
     if ($metadataUploadPath -ne $XmlPath) {
       Remove-Item -LiteralPath $metadataUploadPath -Force -ErrorAction SilentlyContinue
     }

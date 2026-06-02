@@ -76,8 +76,7 @@ function Publish-GeoServerData {
     [bool]$DryRun = $false
   )
 
-  Write-Host ""
-  Write-Host "1/5 - Publicando $DataLabel no GeoServer..."
+  Write-PublishStep -Step "1/5" -Message "Publicando $DataLabel no GeoServer..."
   Invoke-Curl -Arguments @(
     "--fail-with-body",
     "--show-error",
@@ -135,8 +134,7 @@ function Set-GeoServerLayerTitle {
     [bool]$DryRun = $false
   )
 
-  Write-Host ""
-  Write-Host "2/5 - Ajustando titulo da camada..."
+  Write-PublishStep -Step "2/5" -Message "Ajustando titulo da camada..."
   $escapedLayerTitle = ConvertTo-XmlMarkupEscapedText -Text $LayerTitle
 
   if ($LayerResource -eq 'featuretypes') {
@@ -196,8 +194,7 @@ function Publish-GeoServerStyle {
     [bool]$DryRun = $false
   )
 
-  Write-Host ""
-  Write-Host "3/5 - Criando estilo SLD no GeoServer..."
+  Write-PublishStep -Step "3/5" -Message "Criando estilo SLD no GeoServer..."
   $sldUploadPath = New-SldWithStyleName -SldPath $SldPath -StyleName $Style -LayerName $Layer
   $sldContentType = Get-SldContentType -SldPath $SldPath
   try {
@@ -248,8 +245,7 @@ function Set-GeoServerDefaultStyle {
     [bool]$DryRun = $false
   )
 
-  Write-Host ""
-  Write-Host "4/5 - Associando estilo a camada..."
+  Write-PublishStep -Step "4/5" -Message "Associando estilo a camada..."
   $layerBody = @"
 {
   "layer": {
@@ -260,27 +256,18 @@ function Set-GeoServerDefaultStyle {
   }
 }
 "@
-  $tmpBody = New-TemporaryFile
-  try {
-    Set-Content -LiteralPath $tmpBody.FullName -Value $layerBody -Encoding ASCII
-    Invoke-Curl -Arguments @(
-      "--fail-with-body",
-      "--show-error",
-      "--location",
-      "--retry", "3",
-      "--retry-delay", "5",
-      "--connect-timeout", "60",
-      "--max-time", "0",
-      "--request", "PUT",
-      "--header", "Authorization: Basic $GeoAuth",
-      "--header", "Content-Type: application/json",
-      "--data-binary", "@$($tmpBody.FullName)",
-      (Get-GeoServerLayerUrl -GeoServer $GeoServer -Workspace $Workspace -Layer $Layer)
-    ) -DryRun $DryRun
-  }
-  finally {
-    Remove-Item -LiteralPath $tmpBody.FullName -Force -ErrorAction SilentlyContinue
-  }
+  Invoke-CurlJson -JsonBody $layerBody -Arguments @(
+    "--fail-with-body",
+    "--show-error",
+    "--location",
+    "--retry", "3",
+    "--retry-delay", "5",
+    "--connect-timeout", "60",
+    "--max-time", "0",
+    "--request", "PUT",
+    "--header", "Authorization: Basic $GeoAuth",
+    (Get-GeoServerLayerUrl -GeoServer $GeoServer -Workspace $Workspace -Layer $Layer)
+  ) -DryRun $DryRun
 }
 
 function Invoke-GeoServerPublish {
@@ -306,8 +293,7 @@ function Invoke-GeoServerPublish {
   Test-GeoServerCredential -GeoServer $GeoServer -GeoAuth $geoAuth -DryRun $DryRun
 
   if ($SkipGeoPackage) {
-    Write-Host ""
-    Write-Host "1/5 - Upload de dados ignorado por parametro -SkipGeoPackage."
+    Write-PublishStep -Step "1/5" -Message "Upload de dados ignorado por parametro -SkipGeoPackage."
   }
   else {
     Publish-GeoServerData -GeoServer $GeoServer -Workspace $Workspace -Store $PublishContext.Store -DataEndpoint $PublishContext.DataEndpoint -DataType $PublishContext.DataType -DataContentType $PublishContext.DataContentType -DataPath $PublishContext.DataPath -DataLabel $PublishContext.DataLabel -GeoAuth $geoAuth -DryRun $DryRun

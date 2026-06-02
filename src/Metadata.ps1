@@ -165,6 +165,7 @@ function Set-DataDictionaryFieldTypes {
     $updateResult = Set-DataDictionaryFieldTypesWithXmlParser -DictionaryXml $dictionaryXml -AttributeTypes $AttributeTypes
   }
   catch {
+    Write-Warning "Nao foi possivel atualizar o dicionario de dados com parser XML; usando fallback regex. Detalhe: $($_.Exception.Message)"
     $updateResult = Set-DataDictionaryFieldTypesWithRegex -DictionaryXml $dictionaryXml -AttributeTypes $AttributeTypes
   }
 

@@ -163,6 +163,25 @@ function ConvertTo-AsciiText {
   return $builder.ToString().Normalize([Text.NormalizationForm]::FormC)
 }
 
+function Write-PublishStep {
+  param(
+    [string]$Step,
+    [string]$Message
+  )
+
+  Write-Host ""
+  Write-Host "$Step - $Message"
+}
+
+function Write-TemporaryUtf8File {
+  param([string]$Content)
+
+  $tempFile = New-TemporaryFile
+  $utf8NoBom = New-Object Text.UTF8Encoding $false
+  [IO.File]::WriteAllText($tempFile.FullName, $Content, $utf8NoBom)
+  return $tempFile
+}
+
 function Add-CurlNoRevokeArgument {
   param([string[]]$Arguments)
 
@@ -265,6 +284,33 @@ function Invoke-CurlCapture {
     -DryRun $DryRun `
     -CaptureOutput $true `
     -DryRunOutput $DryRunOutput
+}
+
+function Invoke-CurlJson {
+  param(
+    [string[]]$Arguments,
+    [string]$JsonBody,
+    [bool]$DryRun = $false,
+    [bool]$CaptureOutput = $false,
+    [string]$DryRunOutput = "{}"
+  )
+
+  $bodyFile = Write-TemporaryUtf8File -Content $JsonBody
+  try {
+    $jsonArguments = $Arguments + @(
+      "--header", "Content-Type: application/json",
+      "--data-binary", "@$($bodyFile.FullName)"
+    )
+
+    if ($CaptureOutput) {
+      return Invoke-CurlCapture -Arguments $jsonArguments -DryRun $DryRun -DryRunOutput $DryRunOutput
+    }
+
+    Invoke-Curl -Arguments $jsonArguments -DryRun $DryRun
+  }
+  finally {
+    Remove-Item -LiteralPath $bodyFile.FullName -Force -ErrorAction SilentlyContinue
+  }
 }
 
 function Get-CookieValue {

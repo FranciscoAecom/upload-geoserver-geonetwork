@@ -83,8 +83,7 @@ $geoCredential = $null
 $geoServerAttributeTypes = @{}
 
 if ($SkipGeoServer) {
-  Write-Host ""
-  Write-Host "1-4/5 - Etapas do GeoServer ignoradas por parametro -SkipGeoServer."
+  Write-PublishStep -Step "1-4/5" -Message "Etapas do GeoServer ignoradas por parametro -SkipGeoServer."
 }
 else {
   $geoServerPublishResult = Invoke-GeoServerPublish `
@@ -99,8 +98,7 @@ else {
 }
 
 if ($SkipCatalog) {
-  Write-Host ""
-  Write-Host "5/5 - Catalogo ignorado por parametro -SkipCatalog."
+  Write-PublishStep -Step "5/5" -Message "Catalogo ignorado por parametro -SkipCatalog."
 }
 else {
   Import-GeoNetworkMetadata `

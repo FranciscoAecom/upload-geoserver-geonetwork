@@ -236,7 +236,14 @@ Exemplo para conferir a publicacao antes de executar de verdade:
 - `src/Urls.ps1`: montagem centralizada dos endpoints GeoServer e GeoNetwork.
 - `config/qas.psd1`: configuracao padrao do ambiente QAS.
 - `config/prod.psd1.example`: exemplo de configuracao para producao.
-- `tests/Run-UnitTests.ps1`: testes locais das funcoes puras do fluxo.
+- `tests/Run-UnitTests.ps1`: agregador das suites locais.
+- `tests/Core.Tests.ps1`: testes dos helpers centrais e HTTP.
+- `tests/GeoNetwork.Tests.ps1`: testes da sessao do catalogo.
+- `tests/Metadata.Tests.ps1`: testes dos ajustes de XML e fallback regex.
+- `tests/Naming.Tests.ps1`: testes do catalogo de regras de nomes.
+- `tests/Urls.Tests.ps1`: testes de montagem dos endpoints.
+- `tests/Workflow.Tests.ps1`: testes integrados das funcoes puras do fluxo.
+- `tests/Validate.ps1`: validacao local completa.
 - `.validate_parse_upload.ps1`: validacao sintatica dos scripts PowerShell.
 
 ## Validacao local
@@ -251,6 +258,12 @@ Para executar os testes locais:
 
 ```powershell
 .\tests\Run-UnitTests.ps1
+```
+
+Para executar sintaxe, testes e `git diff --check` em uma unica chamada:
+
+```powershell
+.\tests\Validate.ps1
 ```
 
 ## Observacoes
