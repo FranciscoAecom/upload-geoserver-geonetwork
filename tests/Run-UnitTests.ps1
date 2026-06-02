@@ -102,6 +102,7 @@ try {
   $expectedCtbpTitle = ("Censo demogr{0}fico por Setor Censit{1}rio - Par{2}metros b{3}sicos (2022)" -f ([char]0x00E1), ([char]0x00E1), ([char]0x00E2), ([char]0x00E1))
   $expectedDfaabTitle = ("Degrada{0}{1}o em {2}reas de Floresta - Bioma Amaz{3}nia" -f $cCedilla, $aTilde, $aAcuteUpper, ([char]0x00F4))
   $expectedUfpTitle = ("{0}rea urbana das sedes municipais com popula{1}{2}o residente" -f $aAcuteUpper, $cCedilla, $aTilde)
+  $expectedUplTitle = ("Pontos oficiais das sedes municipais e capitais com popula{0}{1}o urbana" -f $cCedilla, $aTilde)
 
   Assert-Equal (Get-StateNameFromLayer -LayerName "pol_pcd_app_car_ba_20260301") "Bahia" "Deve identificar UF pelo nome da camada"
   Assert-Equal (Get-AppCarLayerTitle -LayerName "pol_pcd_app_car_ba_20260301") $expectedAppCarTitle "Deve montar titulo APP CAR"
@@ -113,6 +114,7 @@ try {
   Assert-Equal (Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName "pol_soc_ctbp_20260520") $expectedCtbpTitle "Deve montar titulo de censo territorial basico parametros"
   Assert-Equal (Get-DegradacaoFlorestaAmazoniaLayerTitle -LayerName "pol_dfaab_imb_20260601") $expectedDfaabTitle "Deve montar titulo de degradacao em areas de floresta - bioma Amazonia"
   Assert-Equal (Get-ManchaUrbanaPopulacaoLayerTitle -LayerName "pol_soc_ufp_20260602") $expectedUfpTitle "Deve montar titulo de mancha urbana com populacao residente"
+  Assert-Equal (Get-LocalidadesPopulacaoUrbanaLayerTitle -LayerName "pnt_soc_upl_20260602") $expectedUplTitle "Deve montar titulo de localidades com populacao urbana"
 
   $configPath = Join-Path $tempRoot "test.psd1"
   Set-Content -LiteralPath $configPath -Value @"
@@ -310,6 +312,7 @@ try {
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_soc_ctbp_20260520" -LayerTitle "Titulo XML") $expectedCtbpTitle "Contexto deve usar titulo amigavel para censo territorial basico parametros"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_dfaab_imb_20260601" -LayerTitle "Titulo XML") $expectedDfaabTitle "Contexto deve usar titulo amigavel para degradacao em areas de floresta - bioma Amazonia"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_soc_ufp_20260602" -LayerTitle "Titulo XML") $expectedUfpTitle "Contexto deve usar titulo amigavel para mancha urbana com populacao residente"
+  Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_soc_upl_20260602" -LayerTitle "Titulo XML") $expectedUplTitle "Contexto deve usar titulo amigavel para localidades com populacao urbana"
 
   Assert-Equal (Join-UrlPath -BaseUrl "https://server/base/" -Segments @("/a/", "b")) "https://server/base/a/b" "Deve juntar segmentos de URL sem duplicar barras"
   Assert-Equal (Get-GeoServerVersionUrl -GeoServer "https://gis/geoserver") "https://gis/geoserver/rest/about/version.json" "Deve montar URL de versao GeoServer"

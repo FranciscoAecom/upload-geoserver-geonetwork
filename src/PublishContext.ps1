@@ -100,6 +100,9 @@ function Resolve-GeoServerLayerTitle {
   elseif ($Layer -match "^pol_soc_ufp_") {
     $geoServerLayerTitle = Get-ManchaUrbanaPopulacaoLayerTitle -LayerName $Layer
   }
+  elseif ($Layer -match "^pnt_soc_upl_") {
+    $geoServerLayerTitle = Get-LocalidadesPopulacaoUrbanaLayerTitle -LayerName $Layer
+  }
 
   if ([string]::IsNullOrWhiteSpace($geoServerLayerTitle)) {
     $geoServerLayerTitle = $LayerTitle

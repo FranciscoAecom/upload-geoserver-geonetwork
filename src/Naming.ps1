@@ -185,6 +185,19 @@ function Get-ManchaUrbanaPopulacaoLayerTitle {
   return ("{0}rea urbana das sedes municipais com popula{1}{2}o residente" -f $aAcuteUpper, $cCedilla, $aTilde)
 }
 
+function Get-LocalidadesPopulacaoUrbanaLayerTitle {
+  param([string]$LayerName)
+
+  if ($LayerName -notmatch "^pnt_soc_upl_\d{8}$") {
+    return $null
+  }
+
+  $cCedilla = [char]0x00E7
+  $aTilde = [char]0x00E3
+
+  return ("Pontos oficiais das sedes municipais e capitais com popula{0}{1}o urbana" -f $cCedilla, $aTilde)
+}
+
 function Assert-KnownLayerNaming {
   param([string]$LayerName)
 
@@ -205,5 +218,8 @@ function Assert-KnownLayerNaming {
   }
   elseif ($LayerName -match "^pol_soc_ufp_" -and [string]::IsNullOrWhiteSpace((Get-ManchaUrbanaPopulacaoLayerTitle -LayerName $LayerName))) {
     Write-Warning "Nao consegui interpretar o nome da camada de mancha urbana com populacao residente '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
+  }
+  elseif ($LayerName -match "^pnt_soc_upl_" -and [string]::IsNullOrWhiteSpace((Get-LocalidadesPopulacaoUrbanaLayerTitle -LayerName $LayerName))) {
+    Write-Warning "Nao consegui interpretar o nome da camada de localidades com populacao urbana '$LayerName'. O script vai usar o titulo do XML ou o proprio nome da camada."
   }
 }
