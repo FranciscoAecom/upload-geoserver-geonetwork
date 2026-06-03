@@ -138,6 +138,28 @@ Esse nome gera o titulo amigavel no GeoServer:
 Censo demografico por Setor Censitario - Parametros basicos (2022)
 ```
 
+Para bases raster de distancia da area urbana das sedes municipais com populacao
+residente, o script reconhece o padrao:
+
+```text
+rst_gsi_dist_ufp_AAAAMMDD
+```
+
+Exemplo:
+
+```powershell
+.\upload_iocasta_qas.ps1 `
+  -Folder "L:\Secure_DCS\BRBLH1PINFW001\COE_Digital\coe_digital_data\silver_data\restricted\gsi\dist_mancha_urbana_populacao\AECOM\20260602\00" `
+  -Workspace "gold" `
+  -SameCredentialForCatalog
+```
+
+Esse nome gera o titulo amigavel no GeoServer:
+
+```text
+Distancia da area urbana das sedes municipais com populacao residente
+```
+
 ## Parametros principais
 
 | Parametro | Padrao | Descricao |
