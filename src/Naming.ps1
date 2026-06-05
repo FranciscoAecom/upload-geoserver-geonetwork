@@ -225,6 +225,19 @@ function Get-DistanciaRodoviasOficiaisLayerTitle {
   return ("Dist{0}ncia das rodovias oficiais" -f $aCircumflex)
 }
 
+function Get-PortosBrasileirosLayerTitle {
+  param([string]$LayerName)
+
+  if ($LayerName -notmatch "^pto_trn_ptrs_\d{8}$") {
+    return $null
+  }
+
+  $aCedilla = [char]0x00E7
+  $aTilde = [char]0x00E3
+
+  return ("Localiza{0}{1}o dos portos brasileiros" -f $aCedilla, $aTilde)
+}
+
 function Get-LocalidadesPopulacaoUrbanaLayerTitle {
   param([string]$LayerName)
 
@@ -287,6 +300,11 @@ function Get-LayerNamingRules {
       Match = "^rst_gsi_dist_rod_of_"
       Resolver = "Get-DistanciaRodoviasOficiaisLayerTitle"
       Warning = "Nao consegui interpretar o nome da camada de distancia das rodovias oficiais '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
+    }
+    [pscustomobject]@{
+      Match = "^pto_trn_ptrs_"
+      Resolver = "Get-PortosBrasileirosLayerTitle"
+      Warning = "Nao consegui interpretar o nome da camada de portos brasileiros '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
     }
     [pscustomobject]@{
       Match = "^pnt_soc_upl_"
