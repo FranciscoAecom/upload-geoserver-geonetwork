@@ -102,6 +102,7 @@ try {
   $expectedCtbpTitle = ("Censo demogr{0}fico por Setor Censit{1}rio - Par{2}metros b{3}sicos (2022)" -f ([char]0x00E1), ([char]0x00E1), ([char]0x00E2), ([char]0x00E1))
   $expectedDfaabTitle = ("Degrada{0}{1}o em {2}reas de Floresta - Bioma Amaz{3}nia" -f $cCedilla, $aTilde, $aAcuteUpper, ([char]0x00F4))
   $expectedUfpTitle = ("{0}rea urbana das sedes municipais com popula{1}{2}o residente" -f $aAcuteUpper, $cCedilla, $aTilde)
+  $expectedDistRodNoTitle = ("Dist{0}ncia das rodovias n{1}o oficiais" -f ([char]0x00E2), $aTilde)
   $expectedUplTitle = ("Pontos oficiais das sedes municipais e capitais com popula{0}{1}o urbana" -f $cCedilla, $aTilde)
   $validUtf8Title = ("Popula{0}{1}o urbana" -f $cCedilla, $aTilde)
   $mojibakeTitle = "Popula" + [char]0x00C3 + [char]0x00A7 + [char]0x00C3 + [char]0x00A3 + "o urbana"
@@ -116,6 +117,7 @@ try {
   Assert-Equal (Get-CensoTerritorialBasicoParametrosLayerTitle -LayerName "pol_soc_ctbp_20260520") $expectedCtbpTitle "Deve montar titulo de censo territorial basico parametros"
   Assert-Equal (Get-DegradacaoFlorestaAmazoniaLayerTitle -LayerName "pol_dfaab_imb_20260601") $expectedDfaabTitle "Deve montar titulo de degradacao em areas de floresta - bioma Amazonia"
   Assert-Equal (Get-ManchaUrbanaPopulacaoLayerTitle -LayerName "pol_soc_ufp_20260602") $expectedUfpTitle "Deve montar titulo de mancha urbana com populacao residente"
+  Assert-Equal (Get-DistanciaRodoviasNaoOficiaisLayerTitle -LayerName "rst_gsi_dist_rod_no_20260603") $expectedDistRodNoTitle "Deve montar titulo de distancia das rodovias nao oficiais"
   Assert-Equal (Get-LocalidadesPopulacaoUrbanaLayerTitle -LayerName "pnt_soc_upl_20260602") $expectedUplTitle "Deve montar titulo de localidades com populacao urbana"
   Assert-Equal (Get-FriendlyLayerTitle -LayerName "pnt_soc_upl_20260602") $expectedUplTitle "Catalogo deve resolver titulo amigavel"
   Assert-Equal (Get-FriendlyLayerTitle -LayerName "camada_sem_regra") $null "Catalogo deve retornar nulo para camada desconhecida"
@@ -321,6 +323,7 @@ try {
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_soc_ctbp_20260520" -LayerTitle "Titulo XML") $expectedCtbpTitle "Contexto deve usar titulo amigavel para censo territorial basico parametros"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_dfaab_imb_20260601" -LayerTitle "Titulo XML") $expectedDfaabTitle "Contexto deve usar titulo amigavel para degradacao em areas de floresta - bioma Amazonia"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_soc_ufp_20260602" -LayerTitle "Titulo XML") $expectedUfpTitle "Contexto deve usar titulo amigavel para mancha urbana com populacao residente"
+  Assert-Equal (Resolve-GeoServerLayerTitle -Layer "rst_gsi_dist_rod_no_20260603" -LayerTitle "Titulo XML") $expectedDistRodNoTitle "Contexto deve usar titulo amigavel para distancia das rodovias nao oficiais"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_soc_upl_20260602" -LayerTitle "Titulo XML") $expectedUplTitle "Contexto deve usar titulo amigavel para localidades com populacao urbana"
 
   Assert-Equal (Join-UrlPath -BaseUrl "https://server/base/" -Segments @("/a/", "b")) "https://server/base/a/b" "Deve juntar segmentos de URL sem duplicar barras"
