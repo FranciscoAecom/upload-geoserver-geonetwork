@@ -213,6 +213,18 @@ function Get-DistanciaRodoviasNaoOficiaisLayerTitle {
   return ("Dist{0}ncia das rodovias n{1}o oficiais" -f $aCircumflex, $aTilde)
 }
 
+function Get-DistanciaRodoviasOficiaisLayerTitle {
+  param([string]$LayerName)
+
+  if ($LayerName -notmatch "^rst_gsi_dist_rod_of_\d{8}$") {
+    return $null
+  }
+
+  $aCircumflex = [char]0x00E2
+
+  return ("Dist{0}ncia das rodovias oficiais" -f $aCircumflex)
+}
+
 function Get-LocalidadesPopulacaoUrbanaLayerTitle {
   param([string]$LayerName)
 
@@ -270,6 +282,11 @@ function Get-LayerNamingRules {
       Match = "^rst_gsi_dist_rod_no_"
       Resolver = "Get-DistanciaRodoviasNaoOficiaisLayerTitle"
       Warning = "Nao consegui interpretar o nome da camada de distancia das rodovias nao oficiais '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
+    }
+    [pscustomobject]@{
+      Match = "^rst_gsi_dist_rod_of_"
+      Resolver = "Get-DistanciaRodoviasOficiaisLayerTitle"
+      Warning = "Nao consegui interpretar o nome da camada de distancia das rodovias oficiais '{0}'. O script vai usar o titulo do XML ou o proprio nome da camada."
     }
     [pscustomobject]@{
       Match = "^pnt_soc_upl_"
