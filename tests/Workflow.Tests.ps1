@@ -95,6 +95,8 @@ try {
   $oAcute = [char]0x00F3
   $expectedAppCarTitle = ("{0}rea de Preserva{1}{2}o Permanente - Im{3}veis Bahia" -f $aAcuteUpper, $cCedilla, $aTilde, $oAcute)
   $expectedImbLulcTitle = ("Uso e cobertura da terra de 2011 - Cole{0}{1}o 10" -f $cCedilla, $aTilde)
+  $expectedImbLulc2005Title = ("Uso e cobertura da terra de 2005 - Cole{0}{1}o 10" -f $cCedilla, $aTilde)
+  $expectedImbLulc2006Title = ("Uso e cobertura da terra de 2006 - Cole{0}{1}o 10" -f $cCedilla, $aTilde)
   $expectedAutosInfracaoTitle = ("Autos de Infra{0}{1}o" -f $cCedilla, $aTilde)
   $expectedAutosInfracaoBrasilTitle = ("Autos de Infra{0}{1}o - Brasil" -f $cCedilla, $aTilde)
   $expectedAutosInfracaoBboxTitle = ("Autos de Infra{0}{1}o - BBox Brasil" -f $cCedilla, $aTilde)
@@ -112,6 +114,8 @@ try {
   Assert-Equal (Get-StateNameFromLayer -LayerName "pol_pcd_app_car_ba_20260301") "Bahia" "Deve identificar UF pelo nome da camada"
   Assert-Equal (Get-AppCarLayerTitle -LayerName "pol_pcd_app_car_ba_20260301") $expectedAppCarTitle "Deve montar titulo APP CAR"
   Assert-Equal (Get-ImbLulcLayerTitle -LayerName "rst_imb_lulc_20110101") $expectedImbLulcTitle "Deve montar titulo IMB LULC com colecao"
+  Assert-Equal (Get-ImbLulcLayerTitle -LayerName "rst_imb_lulc_20050101") $expectedImbLulc2005Title "Deve montar titulo IMB LULC 2005"
+  Assert-Equal (Get-ImbLulcLayerTitle -LayerName "rst_imb_lulc_20060101") $expectedImbLulc2006Title "Deve montar titulo IMB LULC 2006"
   Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_20260514") $expectedAutosInfracaoTitle "Deve montar titulo de autos de infracao"
   Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_brasil_20260514") $expectedAutosInfracaoBrasilTitle "Deve montar titulo de autos de infracao Brasil"
   Assert-Equal (Get-AutosInfracaoLayerTitle -LayerName "pnt_pcd_enov_bbox_brasil_20260514") $expectedAutosInfracaoBboxTitle "Deve montar titulo de autos de infracao com bbox Brasil"
@@ -322,6 +326,8 @@ try {
   Assert-Equal $context.GeoServerLayerTitle $expectedAppCarTitle "Contexto deve usar titulo amigavel no GeoServer"
 
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_pcd_enov_20260514" -LayerTitle "Titulo XML") $expectedAutosInfracaoTitle "Contexto deve usar titulo amigavel para autos de infracao"
+  Assert-Equal (Resolve-GeoServerLayerTitle -Layer "rst_imb_lulc_20050101" -LayerTitle "Titulo XML") $expectedImbLulc2005Title "Contexto deve usar titulo amigavel para IMB LULC 2005"
+  Assert-Equal (Resolve-GeoServerLayerTitle -Layer "rst_imb_lulc_20060101" -LayerTitle "Titulo XML") $expectedImbLulc2006Title "Contexto deve usar titulo amigavel para IMB LULC 2006"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pnt_pcd_enov_brasil_20260514" -LayerTitle "Titulo XML") $expectedAutosInfracaoBrasilTitle "Contexto deve usar titulo amigavel para autos de infracao Brasil"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_loc_cse_20241114" -LayerTitle "Titulo XML") $expectedSetorCensitarioTitle "Contexto deve usar titulo amigavel para setor censitario"
   Assert-Equal (Resolve-GeoServerLayerTitle -Layer "pol_soc_ctbp_20260520" -LayerTitle "Titulo XML") $expectedCtbpTitle "Contexto deve usar titulo amigavel para censo territorial basico parametros"

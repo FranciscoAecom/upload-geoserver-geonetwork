@@ -13,6 +13,8 @@ $expectedDistTitle = ("Dist{0}ncia da {1}rea urbana das sedes municipais com pop
 $expectedDistRodNoTitle = ("Dist{0}ncia das rodovias n{1}o oficiais" -f $aCircumflex, $aTilde)
 $expectedDistRodOfTitle = ("Dist{0}ncia das rodovias oficiais" -f $aCircumflex)
 $expectedPortosTitle = ("Localiza{0}{1}o dos portos brasileiros" -f $cCedilla, $aTilde)
+$expectedImbLulc2005Title = ("Uso e cobertura da terra de 2005 - Cole{0}{1}o 10" -f $cCedilla, $aTilde)
+$expectedImbLulc2006Title = ("Uso e cobertura da terra de 2006 - Cole{0}{1}o 10" -f $cCedilla, $aTilde)
 $rules = @(Get-LayerNamingRules)
 
 Assert-True ($rules.Count -ge 14) "Catalogo deve conter as regras conhecidas"
@@ -21,6 +23,8 @@ Assert-Equal (Get-FriendlyLayerTitle -LayerName "rst_gsi_dist_ufp_20260602") $ex
 Assert-Equal (Get-FriendlyLayerTitle -LayerName "rst_gsi_dist_rod_no_20260603") $expectedDistRodNoTitle "Catalogo deve resolver camada GSI DIST ROD NO"
 Assert-Equal (Get-FriendlyLayerTitle -LayerName "rst_gsi_dist_rod_of_20260603") $expectedDistRodOfTitle "Catalogo deve resolver camada GSI DIST ROD OF"
 Assert-Equal (Get-FriendlyLayerTitle -LayerName "pto_trn_ptrs_20240422") $expectedPortosTitle "Catalogo deve resolver camada TRN PTRS"
+Assert-Equal (Get-FriendlyLayerTitle -LayerName "rst_imb_lulc_20050101") $expectedImbLulc2005Title "Catalogo deve resolver camada IMB LULC 2005"
+Assert-Equal (Get-FriendlyLayerTitle -LayerName "rst_imb_lulc_20060101") $expectedImbLulc2006Title "Catalogo deve resolver camada IMB LULC 2006"
 Assert-Equal (Get-FriendlyLayerTitle -LayerName "camada_sem_regra") $null "Catalogo deve retornar nulo para camada desconhecida"
 
-Write-Host "NAMING TESTS OK (7)"
+Write-Host "NAMING TESTS OK (9)"
